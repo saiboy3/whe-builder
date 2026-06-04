@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { cors } from './_lib/auth'
+
+function setCors(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
 
 // Rules-based baseline hours per phase: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
 const BASELINE: Record<string, Record<string, number[]>> = {
@@ -129,7 +134,7 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
+  setCors(res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
 
