@@ -53,38 +53,50 @@ const DISCIPLINE_MAP: Record<string, string[]> = {
   'Signal Upgrade':         ['Traffic'],
 }
 
+// Task names match MassDOT WHE Form 1.3 (January 2024)
 const TASK_MAP: Record<string, Record<string, string[]>> = {
   Roadway: {
-    'Preliminary Design': ['Data Collection & Site Visit', 'Conceptual Layout'],
-    '25% Design':         ['Horizontal Alignment', 'Vertical Profile'],
-    '75% Design':         ['Final Roadway Design', 'Cross-Section Development', 'Earthwork Calculations'],
-    '100% / PS&E':        ['Final Plans', 'Specifications', 'Cost Estimates', 'QA/QC'],
+    'Preliminary Design': ['Project Initiation and Data Compilation', 'Conceptual Design and Alternatives Analysis', 'Field Reconnaissance'],
+    '25% Design':         ['Preliminary Horizontal Geometry', 'Preliminary Vertical Geometry', 'Pavement Design', 'Typical Sections', 'Quality Control (QC) Review', 'Preliminary Construction Cost Estimate'],
+    '75% Design':         ['Final Horizontal Design Geometrics', 'Final Vertical Design Geometrics', 'Construction Plans', 'Grading and Tie Plans', 'Quantity and Cost Estimate', 'Constructability and Quality Control (QC) Reviews'],
+    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Finalize Quantity and Cost Estimate', 'Quality Control (QC) Review', 'Submission Checklist'],
   },
   Traffic: {
-    'Preliminary Design': ['Existing Conditions Analysis'],
-    '25% Design':         ['Traffic Analysis', 'Signal Warrant Study'],
-    '75% Design':         ['Signal Design', 'Signing & Marking'],
-    '100% / PS&E':        ['Final Signal Plans'],
+    'Preliminary Design': ['Intersection Control Evaluation', 'Road Safety Audit', 'Prepare Traffic Volumes'],
+    '25% Design':         ['Lane Configurations', 'Traffic Signals', 'Signs and Pavement Markings', 'Traffic Management'],
+    '75% Design':         ['Traffic Signs', 'Traffic Signals and Plan Preparation', 'Pavement Markings and Plan Preparation', 'Traffic Management Plans and Details'],
+    '100% / PS&E':        ['Finalize Plans', 'Traffic Control Agreement Submission'],
   },
   Structures: {
-    'Preliminary Design': ['Bridge Inspection Review', 'Conceptual Repair Strategy'],
-    '25% Design':         ['Structural Analysis', 'Preliminary Drawings'],
-    '75% Design':         ['Final Structural Design', 'Load Rating'],
-    '100% / PS&E':        ['Final Structural Plans', 'QA/QC'],
+    'Preliminary Design': ['Field Investigation', 'Preliminary Structural Analysis', 'Preliminary Structures Report Preparation', 'Bridge Type Selection Worksheet'],
+    '25% Design':         ['Sketch Plan Development', 'Establish Boring Locations', 'Constructability Review'],
+    '75% Design':         ['Structural Design - Superstructure', 'Structural Design - Substructure', 'Contract Drawings', 'Quantity Cost Estimates', 'Constructability and Quality Control (QC) Review'],
+    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Quality Control (QC) Review'],
   },
   'Hydraulics/Drainage': {
-    'Preliminary Design': ['Drainage Inventory'],
-    '25% Design':         ['Initial Drainage Design'],
-    '75% Design':         ['Final Drainage Design', 'Stormwater Management'],
-    '100% / PS&E':        ['Final Drainage Plans'],
+    'Preliminary Design': ['Hydraulics Study and Report'],
+    '25% Design':         ['Hydrological Studies and Hydraulics Report', 'Preliminary Drainage Studies'],
+    '75% Design':         ['Drainage and Water Supply Plans'],
+    '100% / PS&E':        ['Finalize Plans'],
+  },
+  Utilities: {
+    '25% Design':         ['Utility Coordination', 'Subsurface Utility Exploration (SUE)', 'Preliminary Utility Design'],
+    '75% Design':         ['Utility Coordination'],
+    '100% / PS&E':        ['Finalize Plans'],
   },
   Environmental: {
-    'Preliminary Design': ['Environmental Screening'],
-    '25% Design':         ['Environmental Permitting'],
+    'Preliminary Design': ['Early Environmental Review Checklist', 'Hazardous Materials Research/Review', 'NEPA/MEPA Determination'],
+    '25% Design':         ['NEPA - Environmental Assessment (EA)', 'Wetland Resource Area Delineation'],
+    '75% Design':         ['Wildlife/Rare Species Assessment', 'WPA Notice of Intent (NOI)'],
   },
   Survey: {
-    'Preliminary Design': ['Survey Coordination', 'Control Survey'],
-    '25% Design':         ['Topographic Survey'],
+    'Preliminary Design': ['Survey Coordination and Verification', 'Field Surveys'],
+    '25% Design':         ['Subsurface Investigation Plan', 'Subsurface Investigation Inspection'],
+    '75% Design':         ['Geotechnical Report'],
+  },
+  'Right-of-Way': {
+    '75% Design':   ['Preliminary Right of Way Plans', 'Layout Plans and Order of Taking', 'Quality Control (QC) Review'],
+    '100% / PS&E':  ['Layout Plans and Order of Taking', 'Written Instrument', 'Quality Control (QC) Review'],
   },
 }
 
@@ -154,7 +166,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json(buildRulesEstimate(projectType, Number(complexity), phases))
   }
 
-  const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience. Produce a detailed work hour estimate.
+  const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience. Produce a detailed work hour estimate using the official MassDOT WHE Form 1.3 task numbering.
+
+MassDOT SECTION STRUCTURE (use ONLY these task names and numbers):
+- Section 100: Project Development Engineering (Preliminary) — tasks 101–113
+- Section 150: Environmental — tasks 151–188
+- Section 300: 25% Highway Design Submission — tasks 301–330
+- Section 400: 75% Highway Design Submission — tasks 401–431
+- Section 450: 100% Highway Design / PS&E — tasks 451–462
+- Section 500: Right of Way — tasks 501–504
+- Section 600: Geotechnical Design — tasks 601–608
+- Section 700: Project Development – Structural — tasks 701–708
+- Section 710: Sketch Plans (Bridge) — tasks 711–716
+- Section 750: Final Bridge Design — tasks 751–761
 
 PROJECT:
 - Type: ${projectType}

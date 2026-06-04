@@ -46,20 +46,27 @@ export const SAMPLE_PROJECTS: Project[] = [
     createdAt: '2026-01-15',
     updatedAt: '2026-05-28',
     tasks: [
-      task('t1', 'Preliminary Design', 'Roadway', 'Data Collection & Site Visit', [4, 8, 16, 24, 0, 0, 4]),
-      task('t2', 'Preliminary Design', 'Roadway', 'Conceptual Layout', [2, 6, 24, 40, 16, 24, 2]),
-      task('t3', 'Preliminary Design', 'Survey', 'Survey Coordination', [1, 4, 8, 16, 0, 0, 2]),
-      task('t4', 'Preliminary Design', 'Environmental', 'Environmental Screening', [1, 4, 12, 20, 0, 0, 2]),
-      task('t5', '25% Design', 'Roadway', 'Horizontal Alignment', [2, 4, 16, 32, 24, 40, 2]),
-      task('t6', '25% Design', 'Roadway', 'Vertical Profile', [1, 4, 12, 24, 16, 32, 2]),
-      task('t7', '25% Design', 'Traffic', 'Traffic Analysis', [1, 4, 16, 32, 8, 8, 2]),
-      task('t8', '25% Design', 'Hydraulics/Drainage', 'Initial Drainage Design', [1, 4, 16, 28, 8, 16, 2], 1.1, 'Complex culvert crossing at mile 2.3'),
-      task('t9', '75% Design', 'Roadway', 'Final Roadway Design', [4, 12, 32, 64, 48, 80, 4]),
-      task('t10', '75% Design', 'Utilities', 'Utility Coordination', [1, 8, 16, 24, 0, 0, 4]),
-      task('t11', '100% / PS&E', 'Roadway', 'Final Plans', [4, 8, 24, 40, 32, 64, 8]),
-      task('t12', '100% / PS&E', 'Roadway', 'Specifications', [2, 4, 16, 24, 0, 0, 8]),
-      task('t13', '100% / PS&E', 'Roadway', 'Cost Estimates', [2, 4, 16, 20, 0, 0, 4]),
-      task('t14', '100% / PS&E', 'Roadway', 'QA/QC', [8, 12, 24, 16, 0, 0, 4]),
+      // Section 100 — Preliminary
+      task('t1', 'Preliminary Design', 'Roadway', 'Project Initiation and Data Compilation', [4, 8, 16, 24, 0, 0, 4]),
+      task('t2', 'Preliminary Design', 'Roadway', 'Conceptual Design and Alternatives Analysis', [2, 6, 24, 40, 16, 24, 2]),
+      task('t3', 'Preliminary Design', 'Survey',  'Survey Coordination and Verification', [1, 4, 8, 16, 0, 0, 2]),
+      task('t4', 'Preliminary Design', 'Environmental', 'Early Environmental Review Checklist', [1, 4, 12, 20, 0, 0, 2]),
+      // Section 300 — 25%
+      task('t5', '25% Design', 'Roadway', 'Preliminary Horizontal Geometry', [2, 4, 16, 32, 24, 40, 2]),
+      task('t6', '25% Design', 'Roadway', 'Preliminary Vertical Geometry', [1, 4, 12, 24, 16, 32, 2]),
+      task('t7', '25% Design', 'Traffic', 'Lane Configurations', [1, 4, 16, 32, 8, 8, 2]),
+      task('t8', '25% Design', 'Traffic', 'Traffic Signals', [1, 2, 8, 16, 8, 8, 2]),
+      task('t9', '25% Design', 'Hydraulics/Drainage', 'Preliminary Drainage Studies', [1, 4, 16, 28, 8, 16, 2], 1.1, 'Complex culvert crossing at mile 2.3'),
+      // Section 400 — 75%
+      task('t10', '75% Design', 'Roadway', 'Construction Plans', [4, 12, 32, 64, 48, 80, 4]),
+      task('t11', '75% Design', 'Utilities', 'Utility Coordination', [1, 8, 16, 24, 0, 0, 4]),
+      task('t12', '75% Design', 'Traffic', 'Traffic Signals and Plan Preparation', [2, 6, 20, 32, 16, 24, 2]),
+      task('t13', '75% Design', 'Hydraulics/Drainage', 'Drainage and Water Supply Plans', [1, 4, 16, 24, 8, 16, 2]),
+      // Section 450 — PS&E
+      task('t14', '100% / PS&E', 'Roadway', 'Finalize Plans', [4, 8, 24, 40, 32, 64, 8]),
+      task('t15', '100% / PS&E', 'Roadway', 'Finalize Special Provisions', [2, 4, 16, 24, 0, 0, 8]),
+      task('t16', '100% / PS&E', 'Roadway', 'Finalize Quantity and Cost Estimate', [2, 4, 16, 20, 0, 0, 4]),
+      task('t17', '100% / PS&E', 'Roadway', 'Quality Control (QC) Review', [8, 12, 24, 16, 0, 0, 4]),
     ],
   },
   {
@@ -76,10 +83,17 @@ export const SAMPLE_PROJECTS: Project[] = [
     createdAt: '2026-03-02',
     updatedAt: '2026-05-30',
     tasks: [
-      task('t15', 'Preliminary Design', 'Structures', 'Bridge Inspection Review', [4, 8, 24, 32, 0, 0, 4]),
-      task('t16', 'Preliminary Design', 'Structures', 'Conceptual Repair Strategy', [4, 8, 32, 48, 8, 0, 4]),
-      task('t17', '25% Design', 'Structures', 'Structural Analysis', [2, 6, 32, 64, 16, 24, 2], 1.2, 'Seismic eval required'),
-      task('t18', '25% Design', 'Structures', 'Preliminary Drawings', [2, 4, 24, 40, 24, 48, 4]),
+      // Section 700 — Preliminary Structural
+      task('t18', 'Preliminary Design', 'Structures', 'Field Investigation', [4, 8, 24, 32, 0, 0, 4]),
+      task('t19', 'Preliminary Design', 'Structures', 'Preliminary Structural Analysis', [4, 8, 32, 48, 8, 0, 4]),
+      task('t20', 'Preliminary Design', 'Structures', 'Preliminary Structures Report Preparation', [2, 4, 16, 24, 0, 0, 4]),
+      // Section 710 — Sketch Plans
+      task('t21', '25% Design', 'Structures', 'Sketch Plan Development', [2, 6, 32, 64, 16, 24, 2], 1.2, 'Seismic evaluation required'),
+      task('t22', '25% Design', 'Structures', 'Establish Boring Locations', [1, 2, 8, 16, 0, 0, 2]),
+      // Section 750 — Final Bridge Design
+      task('t23', '75% Design', 'Structures', 'Structural Design - Superstructure', [6, 12, 48, 96, 32, 48, 4]),
+      task('t24', '75% Design', 'Structures', 'Structural Design - Substructure', [4, 8, 32, 64, 24, 40, 4]),
+      task('t25', '75% Design', 'Structures', 'Contract Drawings', [2, 4, 16, 32, 24, 48, 4]),
     ],
   },
   {
@@ -96,13 +110,17 @@ export const SAMPLE_PROJECTS: Project[] = [
     createdAt: '2025-11-10',
     updatedAt: '2026-04-12',
     tasks: [
-      task('t19', 'Preliminary Design', 'Traffic', 'Existing Conditions Analysis', [2, 4, 16, 24, 0, 0, 2]),
-      task('t20', 'Preliminary Design', 'Traffic', 'Safety Analysis', [1, 4, 16, 24, 0, 0, 2]),
-      task('t21', '25% Design', 'Traffic', 'Signal Design', [1, 4, 16, 32, 8, 16, 2]),
-      task('t22', '25% Design', 'Roadway', 'Geometric Improvements', [1, 4, 16, 24, 12, 24, 2]),
-      task('t23', '100% / PS&E', 'Traffic', 'Final Signal Plans', [2, 4, 16, 24, 16, 32, 4]),
-      task('t24', '100% / PS&E', 'Roadway', 'Final Plans & Specs', [2, 4, 12, 20, 8, 16, 8]),
-      task('t25', '100% / PS&E', 'Roadway', 'QA/QC', [6, 8, 16, 8, 0, 0, 2]),
+      // Section 100 — Preliminary
+      task('t26', 'Preliminary Design', 'Traffic', 'Intersection Control Evaluation', [2, 4, 16, 24, 0, 0, 2]),
+      task('t27', 'Preliminary Design', 'Traffic', 'Road Safety Audit', [1, 4, 16, 24, 0, 0, 2]),
+      // Section 300 — 25%
+      task('t28', '25% Design', 'Traffic', 'Traffic Signals', [1, 4, 16, 32, 8, 16, 2]),
+      task('t29', '25% Design', 'Traffic', 'Lane Configurations', [1, 4, 16, 24, 12, 24, 2]),
+      task('t30', '25% Design', 'Roadway', 'Pavement Design', [1, 4, 12, 20, 8, 16, 2]),
+      // Section 450 — PS&E
+      task('t31', '100% / PS&E', 'Traffic', 'Traffic Control Agreement Submission', [2, 4, 16, 24, 16, 32, 4]),
+      task('t32', '100% / PS&E', 'Roadway', 'Finalize Plans', [2, 4, 12, 20, 8, 16, 8]),
+      task('t33', '100% / PS&E', 'Roadway', 'Quality Control (QC) Review', [6, 8, 16, 8, 0, 0, 2]),
     ],
   },
 ]

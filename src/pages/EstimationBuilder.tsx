@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'luci
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
 import { STAFF_CATEGORIES, PHASES, DISCIPLINES, DEFAULT_RATES, OVERHEAD_MULTIPLIER, PROFIT_RATE } from '../types'
-import { getTaskNumber } from '../lib/taskNumbers'
+import { getTaskNumber, STAFF_LABEL_MAP } from '../lib/taskNumbers'
 
 type GroupKey = `${Phase}||${Discipline}`
 
@@ -152,8 +152,8 @@ export default function EstimationBuilder() {
               <th className="px-4 py-2.5 text-left text-xs font-semibold sticky left-0 bg-slate-800 w-20">Task #</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold w-56 bg-slate-800">Task Name</th>
               {STAFF_CATEGORIES.map(cat => (
-                <th key={cat} className="px-2 py-2.5 text-center text-xs font-semibold min-w-[70px]">
-                  <div>{cat.split(' ').map((w, i) => i === 0 ? w : <br key={i}/>)}</div>
+                <th key={cat} className="px-2 py-2.5 text-center text-xs font-semibold min-w-[60px]" title={cat}>
+                  {STAFF_LABEL_MAP[cat] ?? cat}
                 </th>
               ))}
               <th className="px-3 py-2.5 text-center text-xs font-semibold min-w-[60px]">Est.</th>
@@ -318,7 +318,7 @@ export default function EstimationBuilder() {
       <div className="bg-slate-50 border-t border-slate-200 px-6 py-2 flex items-center gap-6 text-xs text-slate-400 flex-shrink-0">
         <span className="font-semibold text-slate-600">Billing Rates:</span>
         {STAFF_CATEGORIES.map(cat => (
-          <span key={cat}>{cat.split(' ').pop()}: <span className="text-slate-600">${DEFAULT_RATES[cat]}/hr</span></span>
+          <span key={cat}>{STAFF_LABEL_MAP[cat] ?? cat} ({cat.split(' ').pop()}): <span className="text-slate-600">${DEFAULT_RATES[cat]}/hr</span></span>
         ))}
         <span className="ml-4">OH Multiplier: <span className="text-slate-600">{OVERHEAD_MULTIPLIER}x</span></span>
         <span>Profit: <span className="text-slate-600">{(PROFIT_RATE * 100).toFixed(0)}%</span></span>
