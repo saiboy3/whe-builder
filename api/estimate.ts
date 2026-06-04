@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth, cors } from './_lib/auth'
 
-// Rules-based baseline hours: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
+// Rules-based baseline hours per phase: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
 const BASELINE: Record<string, Record<string, number[]>> = {
   'Roadway Reconstruction': {
     'Preliminary Design': [4, 8, 20, 32, 8, 8, 4],
@@ -29,7 +30,7 @@ const BASELINE: Record<string, Record<string, number[]>> = {
   },
 }
 
-const DEFAULT_BASELINE = {
+const DEFAULT_BASELINE: Record<string, number[]> = {
   'Preliminary Design': [3, 8, 20, 32, 8, 8, 4],
   '25% Design':         [4, 10, 28, 56, 24, 40, 4],
   '75% Design':         [5, 14, 40, 80, 40, 64, 6],
@@ -39,49 +40,43 @@ const DEFAULT_BASELINE = {
 const STAFF = ['Principal', 'Project Manager', 'Senior Engineer', 'Engineer', 'Designer', 'CADD', 'Clerical']
 
 const DISCIPLINE_MAP: Record<string, string[]> = {
-  'Roadway Reconstruction': ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Utilities', 'Environmental', 'Survey'],
+  'Roadway Reconstruction': ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
   'Bridge Rehabilitation':  ['Structures', 'Hydraulics/Drainage', 'Survey'],
-  'Intersection Safety':    ['Traffic', 'Roadway', 'Utilities'],
+  'Intersection Safety':    ['Traffic', 'Roadway'],
   'Drainage Improvement':   ['Hydraulics/Drainage', 'Roadway', 'Environmental'],
   'Corridor Study':         ['Roadway', 'Traffic', 'Environmental'],
   'Resurfacing':            ['Roadway', 'Survey'],
-  'Signal Upgrade':         ['Traffic', 'Utilities'],
+  'Signal Upgrade':         ['Traffic'],
 }
 
 const TASK_MAP: Record<string, Record<string, string[]>> = {
   Roadway: {
     'Preliminary Design': ['Data Collection & Site Visit', 'Conceptual Layout'],
-    '25% Design':         ['Horizontal Alignment', 'Vertical Profile', 'Superelevation'],
-    '75% Design':         ['Final Roadway Design', 'Cross-Section Development', 'Earthwork Calculations', 'Pavement Design'],
+    '25% Design':         ['Horizontal Alignment', 'Vertical Profile'],
+    '75% Design':         ['Final Roadway Design', 'Cross-Section Development', 'Earthwork Calculations'],
     '100% / PS&E':        ['Final Plans', 'Specifications', 'Cost Estimates', 'QA/QC'],
   },
   Traffic: {
     'Preliminary Design': ['Existing Conditions Analysis'],
     '25% Design':         ['Traffic Analysis', 'Signal Warrant Study'],
     '75% Design':         ['Signal Design', 'Signing & Marking'],
-    '100% / PS&E':        ['Final Signal Plans', 'Traffic Control Plans'],
+    '100% / PS&E':        ['Final Signal Plans'],
   },
   Structures: {
     'Preliminary Design': ['Bridge Inspection Review', 'Conceptual Repair Strategy'],
     '25% Design':         ['Structural Analysis', 'Preliminary Drawings'],
     '75% Design':         ['Final Structural Design', 'Load Rating'],
-    '100% / PS&E':        ['Final Structural Plans', 'Bridge Specifications', 'QA/QC'],
+    '100% / PS&E':        ['Final Structural Plans', 'QA/QC'],
   },
   'Hydraulics/Drainage': {
     'Preliminary Design': ['Drainage Inventory'],
-    '25% Design':         ['Initial Drainage Design', 'Culvert Analysis'],
+    '25% Design':         ['Initial Drainage Design'],
     '75% Design':         ['Final Drainage Design', 'Stormwater Management'],
     '100% / PS&E':        ['Final Drainage Plans'],
   },
-  Utilities: {
-    '25% Design':  ['Utility Identification'],
-    '75% Design':  ['Utility Coordination', 'Utility Relocation Plans'],
-    '100% / PS&E': ['Final Utility Plans'],
-  },
   Environmental: {
-    'Preliminary Design': ['Environmental Screening', 'Wetland Delineation'],
+    'Preliminary Design': ['Environmental Screening'],
     '25% Design':         ['Environmental Permitting'],
-    '100% / PS&E':        ['Mitigation Planning'],
   },
   Survey: {
     'Preliminary Design': ['Survey Coordination', 'Control Survey'],
@@ -89,25 +84,19 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
   },
 }
 
-function buildRulesEstimate(
-  projectType: string,
-  complexity: number,
-  phases: string[]
-) {
-  const multiplier = 0.6 + (complexity - 1) * 0.2 // 0.6x to 1.4x
+function buildRulesEstimate(projectType: string, complexity: number, phases: string[]) {
+  const multiplier = 0.6 + (complexity - 1) * 0.2
   const disciplines = DISCIPLINE_MAP[projectType] ?? ['Roadway', 'Traffic']
   const phaseBaselines = BASELINE[projectType] ?? DEFAULT_BASELINE
 
-  const disciplineResults = disciplines.map(disc => {
+  const disciplineResults = disciplines.map((disc, dIdx) => {
+    const scale = dIdx === 0 ? 1 : 0.4
     const tasks = phases.flatMap(phase => {
       const taskNames = TASK_MAP[disc]?.[phase]
       if (!taskNames) return []
-      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase as keyof typeof DEFAULT_BASELINE] ?? [2, 4, 8, 16, 8, 12, 2]
-      // Spread phase hours across tasks for this discipline
-      const taskCount = taskNames.length
-      const scale = disciplines.indexOf(disc) === 0 ? 1 : 0.4 // primary discipline gets full hours
-      return taskNames.map((taskName, ti) => {
-        const hrs = base.map(h => Math.round((h * multiplier * scale) / taskCount * (ti === 0 ? 1.3 : 0.85)))
+      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12, 2]
+      return taskNames.map(taskName => {
+        const hrs = base.map(h => Math.max(0, Math.round((h * multiplier * scale) / taskNames.length)))
         const likely = hrs.reduce((s, v) => s + v, 0)
         return {
           phase,
@@ -116,7 +105,7 @@ function buildRulesEstimate(
           lowHours: Math.round(likely * 0.8),
           likelyHours: likely,
           highHours: Math.round(likely * 1.3),
-          rationale: `Standard MassDOT baseline for ${disc} — ${phase}`,
+          rationale: `MassDOT baseline for ${disc} — ${phase} at complexity ${complexity}/5`,
         }
       })
     })
@@ -126,7 +115,7 @@ function buildRulesEstimate(
   const total = disciplineResults.flatMap(d => d.tasks).reduce((s, t) => s + t.likelyHours, 0)
 
   return {
-    summary: `Rules-based estimate for a ${projectType} project in ${projectType} at complexity ${complexity}/5. Hours scaled from MassDOT standard baselines. Connect an ANTHROPIC_API_KEY for AI-powered estimates with full rationale.`,
+    summary: `Rules-based estimate for a ${projectType} project at complexity ${complexity}/5 using MassDOT standard baselines. Add ANTHROPIC_API_KEY to Vercel for AI-powered estimates with detailed rationale.`,
     confidenceScore: 65,
     totalEstimatedHours: total,
     disciplines: disciplineResults,
@@ -134,8 +123,8 @@ function buildRulesEstimate(
     similarProjects: [],
     assumptions: [
       'Based on MassDOT standard WBS baselines',
-      'Complexity multiplier applied uniformly across all disciplines',
-      'Add ANTHROPIC_API_KEY to Vercel environment for AI-powered estimates',
+      `Complexity multiplier: ${multiplier.toFixed(1)}x`,
+      'Add ANTHROPIC_API_KEY in Vercel env vars for AI-powered estimates',
     ],
   }
 }
@@ -144,92 +133,83 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
+
   const user = requireAuth(req, res)
   if (!user) return
 
-  const { projectType, district, description, complexity = 3, roadMiles, bridges, intersections, phases } = req.body
-  const selectedPhases: string[] = phases ?? ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E']
+  const {
+    projectType = 'Roadway Reconstruction',
+    district = 'Not specified',
+    description = '',
+    complexity = 3,
+    roadMiles = 'N/A',
+    bridges = 0,
+    intersections = 0,
+    phases = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E'],
+  } = req.body ?? {}
 
-  // If no API key configured, return rules-based estimate immediately
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.json(buildRulesEstimate(projectType ?? 'Roadway Reconstruction', Number(complexity), selectedPhases))
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return res.json(buildRulesEstimate(projectType, Number(complexity), phases))
   }
 
-  // Pull similar historical projects for Claude context
-  let historicalContext = ''
-  try {
-    const { prisma } = await import('./_lib/prisma')
-    const similar = await prisma.historicalProjectMetric.findMany({
-      where: { projectType: { contains: (projectType ?? '').split(' ')[0], mode: 'insensitive' } },
-      orderBy: { completedAt: 'desc' },
-      take: 8,
-    })
-    if (similar.length > 0) {
-      historicalContext = '\n\nHISTORICAL PROJECT DATA (actual hours from completed similar projects):\n' +
-        similar.map(m =>
-          `- ${m.projectName} (${m.district}): ${m.discipline} / ${m.taskName} / ${m.staffCategory}: ` +
-          `estimated ${m.estimatedHours}h, actual ${m.actualHours}h (${m.variance >= 0 ? '+' : ''}${m.variance}h variance)`
-        ).join('\n')
-    }
-  } catch { /* DB not available */ }
+  const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience. Produce a detailed work hour estimate.
 
-  const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience in Massachusetts. Produce a detailed work hour estimate.
-
-PROJECT DETAILS:
-- Type: ${projectType ?? 'Not specified'}
-- District: ${district ?? 'Not specified'}
-- Description: ${description ?? 'Not specified'}
+PROJECT:
+- Type: ${projectType}
+- District: ${district}
+- Description: ${description || 'Not provided'}
 - Complexity: ${complexity}/5
-- Road miles: ${roadMiles ?? 'N/A'}, Bridges: ${bridges ?? 0}, Intersections: ${intersections ?? 0}
-- Phases: ${selectedPhases.join(', ')}
-${historicalContext}
+- Road miles: ${roadMiles}, Bridges: ${bridges}, Intersections: ${intersections}
+- Phases: ${phases.join(', ')}
 
-Staff categories (use exact names): Principal, Project Manager, Senior Engineer, Engineer, Designer, CADD, Clerical
+Staff (use exact names): Principal, Project Manager, Senior Engineer, Engineer, Designer, CADD, Clerical
 Disciplines (use exact names): Roadway, Traffic, Structures, Hydraulics/Drainage, Utilities, Environmental, Survey, Right-of-Way, Construction Support
 
-Return ONLY valid JSON — no markdown, no explanation outside JSON:
+Return ONLY valid JSON, no markdown fences:
 {
   "summary": "2-3 sentence rationale",
-  "confidenceScore": 0-100,
-  "totalEstimatedHours": number,
+  "confidenceScore": 75,
+  "totalEstimatedHours": 0,
   "disciplines": [
     {
-      "discipline": string,
+      "discipline": "string",
       "tasks": [
         {
-          "phase": string,
-          "taskName": string,
-          "hours": { "Principal": n, "Project Manager": n, "Senior Engineer": n, "Engineer": n, "Designer": n, "CADD": n, "Clerical": n },
-          "lowHours": number,
-          "likelyHours": number,
-          "highHours": number,
-          "rationale": string
+          "phase": "string",
+          "taskName": "string",
+          "hours": { "Principal": 0, "Project Manager": 0, "Senior Engineer": 0, "Engineer": 0, "Designer": 0, "CADD": 0, "Clerical": 0 },
+          "lowHours": 0,
+          "likelyHours": 0,
+          "highHours": 0,
+          "rationale": "string"
         }
       ]
     }
   ],
-  "riskFlags": ["string"],
-  "similarProjects": ["string"],
-  "assumptions": ["string"]
+  "riskFlags": [],
+  "similarProjects": [],
+  "assumptions": []
 }`
 
   try {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const client = new Anthropic({ apiKey })
     const message = await client.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     })
+
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
     const clean = text.replace(/^```json\s*/m, '').replace(/^```\s*/m, '').replace(/\s*```$/m, '').trim()
-    return res.json(JSON.parse(clean))
+    const parsed = JSON.parse(clean)
+    return res.json(parsed)
   } catch (err: any) {
-    console.error('Claude estimation error:', err)
-    // Fall back to rules-based rather than showing an error
+    console.error('Claude error:', err?.message ?? err)
+    // Fall back to rules rather than showing an error
     return res.json({
-      ...buildRulesEstimate(projectType ?? 'Roadway Reconstruction', Number(complexity), selectedPhases),
-      summary: `Rules-based fallback estimate (Claude API error: ${err.message?.slice(0, 80)}). Add a valid ANTHROPIC_API_KEY in Vercel environment variables for AI estimates.`,
+      ...buildRulesEstimate(projectType, Number(complexity), phases),
+      summary: `Estimate generated using rules-based engine (Claude unavailable: ${String(err?.message ?? '').slice(0, 100)}). Results reflect MassDOT standard baselines.`,
     })
   }
 }
