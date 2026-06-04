@@ -3,7 +3,7 @@ import { Save, CheckCircle2, ChevronDown, ChevronRight, RefreshCw } from 'lucide
 import { useApp } from '../context/AppContext'
 import {
   designEscalationFactor, deriveBillingRates,
-  computeMeanSalaryRates, MASSDOT_TITLE_MAP, ANNUAL_INFLATION
+  computeMeanSalaryRates, MASSDOT_TITLE_MAP
 } from '../lib/rateEscalation'
 import { STAFF_CATEGORIES } from '../types'
 
