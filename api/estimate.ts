@@ -6,41 +6,7 @@ function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
-// Rules-based baseline hours per phase: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
-const BASELINE: Record<string, Record<string, number[]>> = {
-  'Roadway Reconstruction': {
-    'Preliminary Design': [4, 8, 20, 32, 8, 8, 4],
-    '25% Design':         [4, 12, 32, 64, 32, 48, 4],
-    '75% Design':         [6, 16, 48, 96, 56, 80, 6],
-    '100% / PS&E':        [8, 16, 32, 48, 24, 48, 12],
-  },
-  'Bridge Rehabilitation': {
-    'Preliminary Design': [4, 8, 32, 48, 8, 0, 4],
-    '25% Design':         [4, 12, 48, 80, 24, 40, 4],
-    '75% Design':         [6, 16, 64, 120, 40, 64, 6],
-    '100% / PS&E':        [8, 16, 40, 64, 24, 48, 12],
-  },
-  'Intersection Safety': {
-    'Preliminary Design': [2, 6, 16, 24, 4, 4, 2],
-    '25% Design':         [2, 8, 20, 40, 16, 24, 2],
-    '75% Design':         [4, 10, 28, 56, 24, 40, 4],
-    '100% / PS&E':        [4, 10, 20, 32, 16, 32, 8],
-  },
-  'Drainage Improvement': {
-    'Preliminary Design': [2, 6, 16, 28, 4, 4, 2],
-    '25% Design':         [2, 8, 24, 48, 16, 24, 2],
-    '75% Design':         [4, 10, 32, 64, 24, 40, 4],
-    '100% / PS&E':        [4, 8, 20, 32, 12, 24, 6],
-  },
-}
-
-const DEFAULT_BASELINE: Record<string, number[]> = {
-  'Preliminary Design': [3, 8, 20, 32, 8, 8, 4],
-  '25% Design':         [4, 10, 28, 56, 24, 40, 4],
-  '75% Design':         [5, 14, 40, 80, 40, 64, 6],
-  '100% / PS&E':        [6, 12, 28, 40, 20, 40, 10],
-}
-
+// ─── MassDOT staff categories (Form 1.3 / Exhibit A) ───────────────────────
 const STAFF = [
   'Principal In Charge (PIC)',
   'Project Manager (PM)',
@@ -50,34 +16,199 @@ const STAFF = [
   'Engineering Technician (ET)',
 ]
 
-const DISCIPLINE_MAP: Record<string, string[]> = {
-  'Roadway Reconstruction': ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
-  'Bridge Rehabilitation':  ['Structures', 'Hydraulics/Drainage', 'Survey'],
-  'Intersection Safety':    ['Traffic', 'Roadway'],
-  'Drainage Improvement':   ['Hydraulics/Drainage', 'Roadway', 'Environmental'],
-  'Corridor Study':         ['Roadway', 'Traffic', 'Environmental'],
-  'Resurfacing':            ['Roadway', 'Survey'],
-  'Signal Upgrade':         ['Traffic'],
+// ─── Real MassDOT roadway project types (scraped from projectinfo portal) ──
+// Each entry: disciplines involved, baseline intensity, primary size metric
+interface ProjectTypeConfig {
+  disciplines: string[]
+  baseline: keyof typeof PHASE_BASELINE
+  sizeMetric: 'roadMiles' | 'bridges' | 'intersections' | 'roadMiles+bridges'
+  intensityMult: number   // relative to a standard 1-mile reconstruction
 }
 
-// Task names match MassDOT WHE Form 1.3 (January 2024)
+const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
+  // ── Full Reconstruction ──────────────────────────────────────────────────
+  'Hwy Reconstr - Restr and Rehab': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0,
+  },
+  'Hwy Reconstr - Major Widening': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.2,
+  },
+  'Roadway Modernization': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.85,
+  },
+  'Roadway Additional Capacity': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Right-of-Way'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0,
+  },
+  'Roadway Minor Widening': {
+    disciplines: ['Roadway', 'Traffic', 'Survey'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.55,
+  },
+  'New Road': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.4,
+  },
+  'Roadway - Reconstr - Sidewalks and Curbing': {
+    disciplines: ['Roadway', 'Traffic', 'Survey'],
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.5,
+  },
+  // ── Intersection ─────────────────────────────────────────────────────────
+  'Intersection Reconstruction': {
+    disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey'],
+    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 1.0,
+  },
+  'Safety Improvements': {
+    disciplines: ['Traffic', 'Roadway'],
+    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 0.7,
+  },
+  'Traffic Signal Upgrades': {
+    disciplines: ['Traffic'],
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 1.0,
+  },
+  'Intelligent Transportation Sys': {
+    disciplines: ['Traffic', 'Roadway'],
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.9,
+  },
+  // ── Bridge ───────────────────────────────────────────────────────────────
+  'Bridge Replacement': {
+    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.0,
+  },
+  'Bridge Rehabilitation': {
+    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.75,
+  },
+  'Bridge Deck Replacement': {
+    disciplines: ['Structures', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.6,
+  },
+  'New Bridge': {
+    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.3,
+  },
+  // ── Pavement ─────────────────────────────────────────────────────────────
+  'Resurfacing': {
+    disciplines: ['Roadway', 'Survey'],
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0,
+  },
+  'Resurfacing Interstate': {
+    disciplines: ['Roadway', 'Survey'],
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0,
+  },
+  'Resurfacing DOT Owned Non-Interstate': {
+    disciplines: ['Roadway', 'Survey'],
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.9,
+  },
+  'Pavement Rehabilitation': {
+    disciplines: ['Roadway', 'Survey', 'Hydraulics/Drainage'],
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.1,
+  },
+  'Limited Access Pavement Preservation': {
+    disciplines: ['Roadway'],
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.6,
+  },
+  // ── Drainage / Culvert ───────────────────────────────────────────────────
+  'Drainage': {
+    disciplines: ['Hydraulics/Drainage', 'Roadway', 'Environmental'],
+    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 1.0,
+  },
+  'Culvert Replacement': {
+    disciplines: ['Hydraulics/Drainage', 'Structures', 'Survey'],
+    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 0.9,
+  },
+  // ── Active Transportation ────────────────────────────────────────────────
+  'Bike Facility Construction': {
+    disciplines: ['Roadway', 'Traffic', 'Survey'],
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.55,
+  },
+  'Shared Use Path Construction': {
+    disciplines: ['Roadway', 'Survey', 'Environmental'],
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.6,
+  },
+  'Sidewalk Construction': {
+    disciplines: ['Roadway', 'Survey'],
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.4,
+  },
+  'Accessibility Improvements': {
+    disciplines: ['Roadway', 'Traffic'],
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.5,
+  },
+  // ── Other ────────────────────────────────────────────────────────────────
+  'Targeted Modernization - Multiple Locations': {
+    disciplines: ['Roadway', 'Traffic', 'Survey'],
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.7,
+  },
+}
+
+// ─── Phase baselines per project type family [PIC, PM, SE, Eng, AE, ET] ───
+const PHASE_BASELINE: Record<string, Record<string, number[]>> = {
+  reconstruction: {
+    'Preliminary Design': [4, 8, 20, 32, 8, 8],
+    '25% Design':         [4, 12, 32, 64, 32, 48],
+    '75% Design':         [6, 16, 48, 96, 56, 80],
+    '100% / PS&E':        [8, 16, 32, 48, 24, 48],
+  },
+  bridge: {
+    'Preliminary Design': [4, 8, 32, 48, 8, 0],
+    '25% Design':         [4, 12, 48, 80, 24, 40],
+    '75% Design':         [6, 16, 64, 120, 40, 64],
+    '100% / PS&E':        [8, 16, 40, 64, 24, 48],
+  },
+  intersection: {
+    'Preliminary Design': [2, 6, 16, 24, 4, 4],
+    '25% Design':         [2, 8, 20, 40, 16, 24],
+    '75% Design':         [4, 10, 28, 56, 24, 40],
+    '100% / PS&E':        [4, 10, 20, 32, 16, 32],
+  },
+  signal: {
+    'Preliminary Design': [1, 4, 10, 16, 4, 0],
+    '25% Design':         [1, 4, 12, 24, 8, 8],
+    '75% Design':         [2, 6, 16, 32, 12, 16],
+    '100% / PS&E':        [2, 6, 12, 20, 8, 16],
+  },
+  pavement: {
+    'Preliminary Design': [1, 4, 8, 16, 4, 0],
+    '25% Design':         [1, 4, 12, 24, 8, 16],
+    '75% Design':         [2, 6, 16, 32, 16, 32],
+    '100% / PS&E':        [2, 6, 12, 20, 8, 24],
+  },
+  drainage: {
+    'Preliminary Design': [2, 6, 16, 28, 4, 4],
+    '25% Design':         [2, 8, 24, 48, 16, 24],
+    '75% Design':         [4, 10, 32, 64, 24, 40],
+    '100% / PS&E':        [4, 8, 20, 32, 12, 24],
+  },
+  modernization: {
+    'Preliminary Design': [2, 6, 14, 22, 6, 6],
+    '25% Design':         [2, 8, 20, 40, 18, 28],
+    '75% Design':         [4, 10, 30, 60, 32, 50],
+    '100% / PS&E':        [4, 10, 20, 32, 16, 32],
+  },
+}
+
+const DEFAULT_BASELINE = PHASE_BASELINE.reconstruction
+
+// ─── Task names per discipline (MassDOT WHE Form 1.3) ───────────────────────
 const TASK_MAP: Record<string, Record<string, string[]>> = {
   Roadway: {
     'Preliminary Design': ['Project Initiation and Data Compilation', 'Conceptual Design and Alternatives Analysis', 'Field Reconnaissance'],
-    '25% Design':         ['Preliminary Horizontal Geometry', 'Preliminary Vertical Geometry', 'Pavement Design', 'Typical Sections', 'Quality Control (QC) Review', 'Preliminary Construction Cost Estimate'],
-    '75% Design':         ['Final Horizontal Design Geometrics', 'Final Vertical Design Geometrics', 'Construction Plans', 'Grading and Tie Plans', 'Quantity and Cost Estimate', 'Constructability and Quality Control (QC) Reviews'],
-    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Finalize Quantity and Cost Estimate', 'Quality Control (QC) Review', 'Submission Checklist'],
+    '25% Design':         ['Preliminary Horizontal Geometry', 'Preliminary Vertical Geometry', 'Pavement Design', 'Typical Sections', 'Quality Control (QC) Review'],
+    '75% Design':         ['Final Horizontal Design Geometrics', 'Final Vertical Design Geometrics', 'Construction Plans', 'Quantity and Cost Estimate', 'Constructability and Quality Control (QC) Reviews'],
+    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Finalize Quantity and Cost Estimate', 'Quality Control (QC) Review'],
   },
   Traffic: {
     'Preliminary Design': ['Intersection Control Evaluation', 'Road Safety Audit', 'Prepare Traffic Volumes'],
-    '25% Design':         ['Lane Configurations', 'Traffic Signals', 'Signs and Pavement Markings', 'Traffic Management'],
-    '75% Design':         ['Traffic Signs', 'Traffic Signals and Plan Preparation', 'Pavement Markings and Plan Preparation', 'Traffic Management Plans and Details'],
+    '25% Design':         ['Lane Configurations', 'Traffic Signals', 'Signs and Pavement Markings'],
+    '75% Design':         ['Traffic Signals and Plan Preparation', 'Pavement Markings and Plan Preparation', 'Traffic Management Plans and Details'],
     '100% / PS&E':        ['Finalize Plans', 'Traffic Control Agreement Submission'],
   },
   Structures: {
-    'Preliminary Design': ['Field Investigation', 'Preliminary Structural Analysis', 'Preliminary Structures Report Preparation', 'Bridge Type Selection Worksheet'],
-    '25% Design':         ['Sketch Plan Development', 'Establish Boring Locations', 'Constructability Review'],
-    '75% Design':         ['Structural Design - Superstructure', 'Structural Design - Substructure', 'Contract Drawings', 'Quantity Cost Estimates', 'Constructability and Quality Control (QC) Review'],
+    'Preliminary Design': ['Field Investigation', 'Preliminary Structural Analysis', 'Preliminary Structures Report Preparation'],
+    '25% Design':         ['Sketch Plan Development', 'Establish Boring Locations'],
+    '75% Design':         ['Structural Design - Superstructure', 'Structural Design - Substructure', 'Contract Drawings', 'Constructability and Quality Control (QC) Review'],
     '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Quality Control (QC) Review'],
   },
   'Hydraulics/Drainage': {
@@ -107,79 +238,114 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
   },
 }
 
-interface SizeFactors {
-  roadMiles: number
-  bridges: number
-  intersections: number
-}
+// ─── Size scaling per discipline ─────────────────────────────────────────────
+interface SizeFactors { roadMiles: number; bridges: number; intersections: number }
 
-// Discipline-specific size scaling:
-//   Roadway/Drainage/Survey — scale with road miles
-//   Structures — scale with bridge count (each bridge is an independent deliverable)
-//   Traffic — scale with intersection count
-//   Environmental/Utilities/ROW — modest scale with road miles
-function disciplineSizeFactor(disc: string, sf: SizeFactors): number {
-  const miles = Math.max(0.5, sf.roadMiles)   // 0.5 mi minimum baseline
-  const bridges = Math.max(0, sf.bridges)
-  const intersections = Math.max(0, sf.intersections)
+function disciplineSizeFactor(disc: string, sf: SizeFactors, primaryMetric: string): number {
+  const miles  = Math.max(0.25, sf.roadMiles)
+  const bridges = sf.bridges
+  const ints   = sf.intersections
+
+  // If user provided 0 for all metrics, fall back to 1.0 (no scaling)
+  const hasSize = sf.roadMiles > 0 || sf.bridges > 0 || sf.intersections > 0
+
+  if (!hasSize) return 1
 
   switch (disc) {
     case 'Roadway':
-      // Linear with miles: 1 mi = 1.0x, 2 mi = 1.6x, 0.5 mi = 0.7x
-      return 0.5 + 0.5 * Math.sqrt(miles)
-    case 'Hydraulics/Drainage':
-      return 0.6 + 0.4 * Math.sqrt(miles)
     case 'Survey':
-      return 0.5 + 0.5 * Math.sqrt(miles)
+      // 0.5 mi → 0.75x, 1 mi → 1.0x, 2 mi → 1.41x, 4 mi → 2.0x
+      return Math.max(0.3, 0.5 + 0.5 * Math.sqrt(miles))
+
+    case 'Hydraulics/Drainage':
+      return Math.max(0.3, 0.55 + 0.45 * Math.sqrt(miles))
+
     case 'Environmental':
-      return 0.7 + 0.3 * Math.sqrt(miles)
-    case 'Utilities':
-      return 0.6 + 0.4 * Math.sqrt(miles)
     case 'Right-of-Way':
-      return 0.5 + 0.5 * Math.sqrt(miles)
+      return Math.max(0.4, 0.6 + 0.4 * Math.sqrt(miles))
+
+    case 'Utilities':
+      return Math.max(0.4, 0.55 + 0.45 * Math.sqrt(miles))
+
     case 'Structures':
-      // Each bridge is its own scope — additive
+      // Each bridge is its own deliverable — hours scale linearly
       return bridges > 0 ? bridges : 1
+
     case 'Traffic':
-      // Scale with intersection count: 2 intersections = baseline
-      return intersections > 0 ? 0.5 + 0.25 * intersections : 1
+      if (primaryMetric === 'intersections' && ints > 0) {
+        // 1 intersection → 0.75x, 2 → 1.0x, 4 → 1.5x, 6 → 2.0x
+        return Math.max(0.3, 0.5 + 0.25 * ints)
+      }
+      // Signal upgrades on a corridor scale with miles too
+      return Math.max(0.3, 0.5 + 0.5 * Math.sqrt(miles))
+
     default:
       return 1
   }
 }
 
-function buildRulesEstimate(
-  projectType: string,
-  complexity: number,
-  phases: string[],
-  sf: SizeFactors
+// ─── Apply size scaling to any estimate result (post-processing) ─────────────
+function applyScaling(
+  disciplines: Array<{ discipline: string; tasks: any[] }>,
+  sf: SizeFactors,
+  primaryMetric: string
 ) {
-  // Complexity multiplier: complexity 1 = 0.6x, 3 = 1.0x, 5 = 1.4x
+  return disciplines.map(d => {
+    const factor = disciplineSizeFactor(d.discipline, sf, primaryMetric)
+    return {
+      ...d,
+      tasks: d.tasks.map((t: any) => {
+        const scaledHours: Record<string, number> = {}
+        for (const [cat, hrs] of Object.entries(t.hours as Record<string, number>)) {
+          scaledHours[cat] = Math.max(0, Math.round(hrs * factor))
+        }
+        const likely = Object.values(scaledHours).reduce((s, v) => s + v, 0)
+        return {
+          ...t,
+          hours: scaledHours,
+          lowHours:    Math.round(likely * 0.8),
+          likelyHours: likely,
+          highHours:   Math.round(likely * 1.3),
+          rationale: t.rationale +
+            (factor !== 1 ? ` [×${factor.toFixed(2)} size factor]` : ''),
+        }
+      }),
+    }
+  })
+}
+
+// ─── Rules-based estimate ─────────────────────────────────────────────────────
+function buildRulesEstimate(projectType: string, complexity: number, phases: string[], sf: SizeFactors) {
+  const config = PROJECT_TYPES[projectType]
+  const disciplines = config?.disciplines ?? ['Roadway', 'Traffic']
+  const baselineKey = config?.baseline ?? 'reconstruction'
+  const phaseBaselines = PHASE_BASELINE[baselineKey] ?? DEFAULT_BASELINE
+  const intensityMult = config?.intensityMult ?? 1.0
+  const primaryMetric = config?.sizeMetric ?? 'roadMiles'
+
+  // Complexity: 1=0.6x, 2=0.8x, 3=1.0x, 4=1.2x, 5=1.4x
   const complexityMult = 0.6 + (complexity - 1) * 0.2
-  const disciplines = DISCIPLINE_MAP[projectType] ?? ['Roadway', 'Traffic']
-  const phaseBaselines = BASELINE[projectType] ?? DEFAULT_BASELINE
 
   const disciplineResults = disciplines.map((disc, dIdx) => {
-    const primaryScale = dIdx === 0 ? 1 : 0.4   // primary discipline gets full baseline
-    const sizeFactor = disciplineSizeFactor(disc, sf)
-    const finalMult = complexityMult * primaryScale * sizeFactor
+    const primaryScale = dIdx === 0 ? 1 : 0.4
+    const sizeFactor = disciplineSizeFactor(disc, sf, primaryMetric)
+    const finalMult = complexityMult * primaryScale * intensityMult * sizeFactor
 
     const tasks = phases.flatMap(phase => {
       const taskNames = TASK_MAP[disc]?.[phase]
       if (!taskNames) return []
-      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12, 2]
+      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12]
       return taskNames.map(taskName => {
         const hrs = base.map(h => Math.max(0, Math.round((h * finalMult) / taskNames.length)))
         const likely = hrs.reduce((s, v) => s + v, 0)
-        const rationale = buildRationale(disc, phase, complexity, complexityMult, sizeFactor, sf)
         return {
           phase,
           taskName,
           hours: Object.fromEntries(STAFF.map((cat, i) => [cat, hrs[i] ?? 0])),
-          lowHours: Math.round(likely * 0.8),
+          lowHours:    Math.round(likely * 0.8),
           likelyHours: likely,
-          highHours: Math.round(likely * 1.3),
-          rationale,
+          highHours:   Math.round(likely * 1.3),
+          rationale: buildRationale(disc, phase, complexity, complexityMult, intensityMult, sizeFactor, sf, primaryMetric),
         }
       })
     })
@@ -187,111 +353,118 @@ function buildRulesEstimate(
   })
 
   const total = disciplineResults.flatMap(d => d.tasks).reduce((s, t) => s + t.likelyHours, 0)
-  const riskFlags: string[] = []
-  if (complexity >= 4) riskFlags.push('High complexity — consider adding 20–30% contingency')
-  if (sf.bridges > 2) riskFlags.push(`${sf.bridges} bridges — structural hours scale per bridge; verify individual bridge scope`)
-  if (sf.roadMiles > 3) riskFlags.push(`${sf.roadMiles} road miles — survey and ROW hours may need further review`)
 
   return {
-    summary: buildSummary(projectType, complexity, complexityMult, sf, total),
+    summary: buildSummary(projectType, complexity, complexityMult, intensityMult, sf, total),
     confidenceScore: 65,
     totalEstimatedHours: total,
     disciplines: disciplineResults,
-    riskFlags,
+    riskFlags: buildRiskFlags(complexity, sf),
     similarProjects: [],
-    assumptions: buildAssumptions(complexity, complexityMult, sf),
+    assumptions: buildAssumptions(projectType, complexity, complexityMult, intensityMult, sf, primaryMetric),
   }
-}
-
-function buildSummary(type: string, complexity: number, mult: number, sf: SizeFactors, total: number): string {
-  const sizeDesc = [
-    sf.roadMiles > 0 ? `${sf.roadMiles} road mile${sf.roadMiles !== 1 ? 's' : ''}` : '',
-    sf.bridges > 0 ? `${sf.bridges} bridge${sf.bridges !== 1 ? 's' : ''}` : '',
-    sf.intersections > 0 ? `${sf.intersections} intersection${sf.intersections !== 1 ? 's' : ''}` : '',
-  ].filter(Boolean).join(', ')
-
-  return `MassDOT baseline estimate for a ${type} project at complexity ${complexity}/5 (${mult.toFixed(1)}x multiplier).` +
-    (sizeDesc ? ` Sized for ${sizeDesc}.` : '') +
-    ` Total likely hours: ${total.toLocaleString()}.`
 }
 
 function buildRationale(
   disc: string, phase: string, complexity: number,
-  complexityMult: number, sizeFactor: number, sf: SizeFactors
+  complexityMult: number, intensityMult: number, sizeFactor: number,
+  sf: SizeFactors, primaryMetric: string
 ): string {
-  const sizeNote = disc === 'Structures' && sf.bridges > 0
-    ? `${sf.bridges} bridge(s) × per-bridge baseline`
-    : disc === 'Traffic' && sf.intersections > 0
-    ? `${sf.intersections} intersection(s) → ${sizeFactor.toFixed(2)}x size factor`
-    : sf.roadMiles > 0
-    ? `${sf.roadMiles} mi → ${sizeFactor.toFixed(2)}x size factor`
-    : 'default 1.0x size factor'
-  return `${disc} / ${phase}: complexity ${complexity}/5 (${complexityMult.toFixed(1)}x) × ${sizeNote}`
+  const sizeNote = disc === 'Structures'
+    ? `${sf.bridges} bridge(s) × 1.0 per-bridge`
+    : primaryMetric === 'intersections'
+    ? `${sf.intersections} intersection(s) → ${sizeFactor.toFixed(2)}x`
+    : `${sf.roadMiles}mi → ${sizeFactor.toFixed(2)}x`
+  return `${disc} / ${phase}: complexity ${complexity}/5 (${complexityMult.toFixed(1)}x) × type factor ${intensityMult.toFixed(2)} × ${sizeNote}`
 }
 
-function buildAssumptions(complexity: number, mult: number, sf: SizeFactors): string[] {
+function buildSummary(type: string, complexity: number, cMult: number, iMult: number, sf: SizeFactors, total: number): string {
+  const parts = [
+    sf.roadMiles > 0 ? `${sf.roadMiles} mi` : '',
+    sf.bridges > 0 ? `${sf.bridges} bridge${sf.bridges !== 1 ? 's' : ''}` : '',
+    sf.intersections > 0 ? `${sf.intersections} intersection${sf.intersections !== 1 ? 's' : ''}` : '',
+  ].filter(Boolean)
+  return `${type} project at complexity ${complexity}/5 (${cMult.toFixed(1)}× complexity, ${iMult.toFixed(2)}× type factor).` +
+    (parts.length ? ` Sized for ${parts.join(', ')}.` : '') +
+    ` Total likely: ${total.toLocaleString()} hours.`
+}
+
+function buildRiskFlags(complexity: number, sf: SizeFactors): string[] {
+  const flags: string[] = []
+  if (complexity >= 4) flags.push('High complexity — consider 20–30% contingency')
+  if (sf.bridges > 2) flags.push(`${sf.bridges} bridges — verify individual bridge scope and type selection`)
+  if (sf.roadMiles > 3) flags.push(`${sf.roadMiles} road miles — survey, ROW, and environmental hours may need further review`)
+  if (sf.intersections > 4) flags.push(`${sf.intersections} intersections — confirm signal design is scoped per intersection`)
+  return flags
+}
+
+function buildAssumptions(type: string, complexity: number, cMult: number, iMult: number, sf: SizeFactors, primaryMetric: string): string[] {
   const out = [
-    `Complexity ${complexity}/5 → ${mult.toFixed(2)}x multiplier (1 = 0.6x, 3 = 1.0x, 5 = 1.4x)`,
+    `Project type: ${type} (type intensity factor: ${iMult.toFixed(2)}x)`,
+    `Complexity ${complexity}/5 → ${cMult.toFixed(2)}x multiplier (range: 0.60x–1.40x)`,
   ]
-  if (sf.roadMiles > 0) out.push(`Road miles: ${sf.roadMiles} → roadway/drainage/survey hours scale as 0.5 + 0.5√miles`)
-  if (sf.bridges > 0) out.push(`Bridges: ${sf.bridges} → structural hours = bridges × per-bridge baseline`)
-  if (sf.intersections > 0) out.push(`Intersections: ${sf.intersections} → traffic hours scale as 0.5 + 0.25 × count`)
-  out.push('Baseline hours sourced from MassDOT WHE Form 1.3 standard task table')
-  out.push('Low = likely × 0.8, High = likely × 1.3')
+  if (sf.roadMiles > 0)    out.push(`Road miles: ${sf.roadMiles} → roadway/drainage/survey scale as 0.5 + 0.5√miles`)
+  if (sf.bridges > 0)      out.push(`Bridges: ${sf.bridges} → structural hours = bridges × per-bridge baseline`)
+  if (sf.intersections > 0) out.push(`Intersections: ${sf.intersections} → traffic scale as 0.5 + 0.25 × count`)
+  out.push('Phase baselines from MassDOT WHE Form 1.3 standard task table')
+  out.push('Range: Low = likely × 0.8, High = likely × 1.3')
   return out
 }
 
+// ─── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
 
   const {
-    projectType = 'Roadway Reconstruction',
-    district = 'Not specified',
-    description = '',
-    complexity = 3,
-    roadMiles = 'N/A',
-    bridges = 0,
+    projectType  = 'Hwy Reconstr - Restr and Rehab',
+    district     = 'Not specified',
+    description  = '',
+    complexity   = 3,
+    roadMiles    = 0,
+    bridges      = 0,
     intersections = 0,
-    phases = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E'],
+    phases       = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E'],
   } = req.body ?? {}
+
+  const sf: SizeFactors = {
+    roadMiles:     parseFloat(roadMiles)    || 0,
+    bridges:       parseInt(bridges)        || 0,
+    intersections: parseInt(intersections)  || 0,
+  }
+  const config = PROJECT_TYPES[projectType]
+  const primaryMetric = config?.sizeMetric ?? 'roadMiles'
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    const sf = { roadMiles: parseFloat(roadMiles) || 0, bridges: Number(bridges), intersections: Number(intersections) }
     return res.json(buildRulesEstimate(projectType, Number(complexity), phases, sf))
   }
 
-  const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience. Produce a detailed work hour estimate using the official MassDOT WHE Form 1.3 task numbering.
+  const prompt = `You are a senior MassDOT consultant estimator. Generate a work hour estimate using MassDOT WHE Form 1.3 task numbering.
 
-MassDOT SECTION STRUCTURE (use ONLY these task names and numbers):
-- Section 100: Project Development Engineering (Preliminary) — tasks 101–113
-- Section 150: Environmental — tasks 151–188
-- Section 300: 25% Highway Design Submission — tasks 301–330
-- Section 400: 75% Highway Design Submission — tasks 401–431
-- Section 450: 100% Highway Design / PS&E — tasks 451–462
-- Section 500: Right of Way — tasks 501–504
-- Section 600: Geotechnical Design — tasks 601–608
-- Section 700: Project Development – Structural — tasks 701–708
-- Section 710: Sketch Plans (Bridge) — tasks 711–716
-- Section 750: Final Bridge Design — tasks 751–761
+PROJECT TYPE: ${projectType}
+DISTRICT: ${district}
+DESCRIPTION: ${description || 'Not provided'}
+COMPLEXITY: ${complexity}/5
+ROAD MILES: ${sf.roadMiles || 'not specified'}
+BRIDGES: ${sf.bridges}
+INTERSECTIONS: ${sf.intersections}
+PHASES: ${phases.join(', ')}
 
-PROJECT:
-- Type: ${projectType}
-- District: ${district}
-- Description: ${description || 'Not provided'}
-- Complexity: ${complexity}/5
-- Road miles: ${roadMiles}, Bridges: ${bridges}, Intersections: ${intersections}
-- Phases: ${phases.join(', ')}
+IMPORTANT — Size scaling rules you MUST apply:
+- Roadway/Survey/Drainage hours: baseline assumes 1 road mile. Scale proportionally for ${sf.roadMiles} miles.
+- Structural hours: baseline assumes 1 bridge. Multiply by ${sf.bridges} for ${sf.bridges} bridge(s).
+- Traffic/Signal hours: baseline assumes 2 intersections. Scale for ${sf.intersections} intersection(s).
+- If a metric is 0 or unspecified, use the baseline.
 
-Staff (use exact names): Principal, Project Manager, Senior Engineer, Engineer, Designer, CADD, Clerical
-Disciplines (use exact names): Roadway, Traffic, Structures, Hydraulics/Drainage, Utilities, Environmental, Survey, Right-of-Way, Construction Support
+Staff: Principal In Charge (PIC), Project Manager (PM), Senior Engineer (SE), Engineer (Eng), Assistant Engineer (AE), Engineering Technician (ET)
+MassDOT sections: 100 (Prelim), 150 (Environmental), 300 (25%), 400 (75%), 450 (PS&E), 500 (ROW), 600 (Geotech), 700/710/750 (Structural)
 
-Return ONLY valid JSON, no markdown fences:
+Return ONLY valid JSON — no markdown:
 {
-  "summary": "2-3 sentence rationale",
-  "confidenceScore": 75,
+  "summary": "string",
+  "confidenceScore": 80,
   "totalEstimatedHours": 0,
   "disciplines": [
     {
@@ -300,10 +473,8 @@ Return ONLY valid JSON, no markdown fences:
         {
           "phase": "string",
           "taskName": "string",
-          "hours": { "Principal": 0, "Project Manager": 0, "Senior Engineer": 0, "Engineer": 0, "Designer": 0, "CADD": 0, "Clerical": 0 },
-          "lowHours": 0,
-          "likelyHours": 0,
-          "highHours": 0,
+          "hours": {"Principal In Charge (PIC)":0,"Project Manager (PM)":0,"Senior Engineer (SE)":0,"Engineer (Eng)":0,"Assistant Engineer (AE)":0,"Engineering Technician (ET)":0},
+          "lowHours": 0, "likelyHours": 0, "highHours": 0,
           "rationale": "string"
         }
       ]
@@ -317,34 +488,34 @@ Return ONLY valid JSON, no markdown fences:
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-8',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }),
     })
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text()
-      throw new Error(`Anthropic API ${anthropicRes.status}: ${errText.slice(0, 200)}`)
-    }
+    if (!anthropicRes.ok) throw new Error(`Anthropic ${anthropicRes.status}: ${await anthropicRes.text().then(t => t.slice(0, 200))}`)
 
     const anthropicData = await anthropicRes.json() as { content: Array<{ type: string; text: string }> }
     const text = anthropicData.content[0]?.type === 'text' ? anthropicData.content[0].text : ''
     const clean = text.replace(/^```json\s*/m, '').replace(/^```\s*/m, '').replace(/\s*```$/m, '').trim()
     const parsed = JSON.parse(clean)
-    return res.json(parsed)
+
+    // ALWAYS post-process with size scaling — guarantees road miles/bridges/intersections affect output
+    const scaled = applyScaling(parsed.disciplines ?? [], sf, primaryMetric)
+    const totalScaled = scaled.flatMap((d: any) => d.tasks).reduce((s: number, t: any) => s + t.likelyHours, 0)
+
+    return res.json({
+      ...parsed,
+      disciplines: scaled,
+      totalEstimatedHours: totalScaled,
+      summary: buildSummary(projectType, Number(complexity), 0.6 + (Number(complexity) - 1) * 0.2, config?.intensityMult ?? 1, sf, totalScaled),
+      riskFlags: [...(parsed.riskFlags ?? []), ...buildRiskFlags(Number(complexity), sf)].filter((v, i, a) => a.indexOf(v) === i),
+      assumptions: [...buildAssumptions(projectType, Number(complexity), 0.6 + (Number(complexity) - 1) * 0.2, config?.intensityMult ?? 1, sf, primaryMetric)],
+    })
   } catch (err: any) {
     console.error('Claude error:', err?.message ?? err)
-    // Fall back to rules rather than showing an error
     return res.json({
-      ...buildRulesEstimate(projectType, Number(complexity), phases, { roadMiles: parseFloat(roadMiles) || 0, bridges: Number(bridges), intersections: Number(intersections) }),
-      summary: `Estimate generated using rules-based engine (Claude unavailable: ${String(err?.message ?? '').slice(0, 100)}). Results reflect MassDOT standard baselines.`,
+      ...buildRulesEstimate(projectType, Number(complexity), phases, sf),
+      summary: `Estimate via rules engine (Claude unavailable). Project: ${projectType}.`,
     })
   }
 }

@@ -5,7 +5,56 @@ import { STAFF_CATEGORIES } from '../types'
 import type { WBSTask, Phase, Discipline } from '../types'
 import { getTaskNumber } from '../lib/taskNumbers'
 
-const PROJECT_TYPES = ['Roadway Reconstruction', 'Bridge Rehabilitation', 'Intersection Safety', 'Drainage Improvement', 'Corridor Study', 'Resurfacing', 'Signal Upgrade']
+// Real MassDOT roadway project types from projectinfo portal
+const PROJECT_TYPES = [
+  // Full Reconstruction
+  'Hwy Reconstr - Restr and Rehab',
+  'Hwy Reconstr - Major Widening',
+  'Roadway Modernization',
+  'Roadway Additional Capacity',
+  'Roadway Minor Widening',
+  'New Road',
+  'Roadway - Reconstr - Sidewalks and Curbing',
+  // Intersection
+  'Intersection Reconstruction',
+  'Safety Improvements',
+  'Traffic Signal Upgrades',
+  'Intelligent Transportation Sys',
+  // Bridge
+  'Bridge Replacement',
+  'Bridge Rehabilitation',
+  'Bridge Deck Replacement',
+  'New Bridge',
+  // Pavement
+  'Resurfacing',
+  'Resurfacing Interstate',
+  'Resurfacing DOT Owned Non-Interstate',
+  'Pavement Rehabilitation',
+  'Limited Access Pavement Preservation',
+  // Drainage
+  'Drainage',
+  'Culvert Replacement',
+  // Active Transportation
+  'Bike Facility Construction',
+  'Shared Use Path Construction',
+  'Sidewalk Construction',
+  'Accessibility Improvements',
+  // Other
+  'Targeted Modernization - Multiple Locations',
+]
+
+// Which primary metric to show based on project type
+const PRIMARY_METRIC: Record<string, 'roadMiles' | 'bridges' | 'intersections'> = {
+  'Bridge Replacement': 'bridges',
+  'Bridge Rehabilitation': 'bridges',
+  'Bridge Deck Replacement': 'bridges',
+  'New Bridge': 'bridges',
+  'Intersection Reconstruction': 'intersections',
+  'Safety Improvements': 'intersections',
+  'Traffic Signal Upgrades': 'intersections',
+  'Intelligent Transportation Sys': 'intersections',
+  'Accessibility Improvements': 'intersections',
+}
 const DISTRICTS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6']
 const PHASES_LIST = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E']
 
@@ -36,7 +85,7 @@ export default function EstimationAssistant() {
   const project = projects.find(p => p.id === selectedProjectId)
 
   const [form, setForm] = useState({
-    projectType: 'Roadway Reconstruction',
+    projectType: 'Hwy Reconstr - Restr and Rehab',
     district: 'District 3',
     description: '',
     complexity: 3,
@@ -166,17 +215,38 @@ export default function EstimationAssistant() {
             </div>
           </Field>
 
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="Road Miles">
-              <input type="number" min={0} step={0.1} value={form.roadMiles} onChange={e => set('roadMiles', e.target.value)} placeholder="0" className="fi" />
-            </Field>
-            <Field label="Bridges">
-              <input type="number" min={0} value={form.bridges} onChange={e => set('bridges', e.target.value)} placeholder="0" className="fi" />
-            </Field>
-            <Field label="Intersections">
-              <input type="number" min={0} value={form.intersections} onChange={e => set('intersections', e.target.value)} placeholder="0" className="fi" />
-            </Field>
-          </div>
+          {/* Size metrics — highlighted based on primary metric for project type */}
+          {(() => {
+            const primary = PRIMARY_METRIC[form.projectType] ?? 'roadMiles'
+            const hl = 'border-purple-400 bg-purple-50 ring-1 ring-purple-200'
+            return (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400">
+                  Size metrics — <span className="text-purple-600 font-medium">highlighted field</span> is primary for this project type
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Field label="Road Miles">
+                    <input type="number" min={0} step={0.1}
+                      value={form.roadMiles} onChange={e => set('roadMiles', e.target.value)}
+                      placeholder="0"
+                      className={`fi ${primary === 'roadMiles' ? hl : ''}`} />
+                  </Field>
+                  <Field label="Bridges">
+                    <input type="number" min={0}
+                      value={form.bridges} onChange={e => set('bridges', e.target.value)}
+                      placeholder="0"
+                      className={`fi ${primary === 'bridges' ? hl : ''}`} />
+                  </Field>
+                  <Field label="Intersections">
+                    <input type="number" min={0}
+                      value={form.intersections} onChange={e => set('intersections', e.target.value)}
+                      placeholder="0"
+                      className={`fi ${primary === 'intersections' ? hl : ''}`} />
+                  </Field>
+                </div>
+              </div>
+            )
+          })()}
 
           <Field label="Phases to Estimate">
             <div className="space-y-1.5">
