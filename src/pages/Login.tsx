@@ -9,25 +9,12 @@ const DEMO_USERS = [
   { label: 'Engineer', email: 'lisa@firma.com' },
 ]
 
-// Microsoft logo SVG
-function MicrosoftLogo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
-      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-    </svg>
-  )
-}
-
 export default function Login() {
-  const { login, loginWithMicrosoft } = useAuth()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('password')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [msLoading, setMsLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,30 +29,9 @@ export default function Login() {
     }
   }
 
-  async function handleMicrosoft() {
-    setError('')
-    setMsLoading(true)
-    try {
-      await loginWithMicrosoft()
-    } catch (err: any) {
-      // User cancelled popup or config not set
-      const msg: string = err.message ?? ''
-      if (msg.includes('popup_window_error') || msg.includes('user_cancelled')) {
-        setError('Sign-in was cancelled.')
-      } else if (msg.includes('no_client_id') || msg.includes('clientId')) {
-        setError('Microsoft SSO is not configured. Contact your administrator.')
-      } else {
-        setError(msg || 'Microsoft sign-in failed')
-      }
-    } finally {
-      setMsLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="p-3 bg-amber-500 rounded-xl">
@@ -88,25 +54,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Microsoft SSO button */}
-          <button
-            type="button"
-            onClick={handleMicrosoft}
-            disabled={msLoading || loading}
-            className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 disabled:opacity-60 text-slate-700 font-semibold py-2.5 rounded-lg transition-colors mb-4"
-          >
-            <MicrosoftLogo />
-            {msLoading ? 'Opening Microsoft sign-in...' : 'Sign in with Microsoft'}
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
-
-          {/* Email/password form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
@@ -131,7 +78,7 @@ export default function Login() {
             </div>
             <button
               type="submit"
-              disabled={loading || msLoading}
+              disabled={loading}
               className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
               <LogIn size={17} />
@@ -139,9 +86,8 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Demo users */}
           <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-xs text-slate-400 mb-3 font-medium uppercase tracking-wide">Demo accounts (password: password)</p>
+            <p className="text-xs text-slate-400 mb-3 font-medium uppercase tracking-wide">Quick access (password: password)</p>
             <div className="grid grid-cols-2 gap-2">
               {DEMO_USERS.map(u => (
                 <button
@@ -161,7 +107,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          Phase 1 + 2 + 3 · MassDOT WHE Platform
+          MassDOT WHE Platform · v1.0
         </p>
       </div>
     </div>

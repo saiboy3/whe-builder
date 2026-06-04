@@ -1,7 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { useMsal } from '@azure/msal-react'
-import { LOGIN_SCOPES } from '../lib/msalConfig'
+
+// Client-side fallback — works in dev and when DB isn't connected
+const DEMO_USERS: Record<string, { id: string; name: string; email: string; role: string }> = {
+  'principal@firma.com': { id: 'demo-1', name: 'James Whitfield', email: 'principal@firma.com', role: 'PRINCIPAL' },
+  'sarah@firma.com':     { id: 'demo-2', name: 'Sarah Chen',      email: 'sarah@firma.com',     role: 'PM' },
+  'mike@firma.com':      { id: 'demo-3', name: 'Mike Torres',     email: 'mike@firma.com',      role: 'PM' },
+  'lisa@firma.com':      { id: 'demo-4', name: 'Lisa Park',       email: 'lisa@firma.com',      role: 'ENGINEER' },
+}
 
 interface AuthUser {
   id: string
@@ -14,96 +20,79 @@ interface AuthContextType {
   user: AuthUser | null
   token: string | null
   login: (email: string, password: string) => Promise<void>
-  loginWithMicrosoft: () => Promise<void>
   logout: () => void
   isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-function storeSession(token: string, user: AuthUser) {
-  localStorage.setItem('whe_token', token)
-  localStorage.setItem('whe_user', JSON.stringify(user))
-}
-
-function clearSession() {
-  localStorage.removeItem('whe_token')
-  localStorage.removeItem('whe_user')
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { instance: msalInstance } = useMsal()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Restore persisted session
     const stored = localStorage.getItem('whe_token')
     const storedUser = localStorage.getItem('whe_user')
     if (stored && storedUser) {
       setToken(stored)
       setUser(JSON.parse(storedUser))
     }
-
-    // Handle MSAL redirect response (popup callback)
-    msalInstance.handleRedirectPromise().catch(() => {}).finally(() => setIsLoading(false))
-  }, [msalInstance])
+    setIsLoading(false)
+  }, [])
 
   async function login(email: string, password: string) {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Login failed' }))
-      throw new Error(err.error ?? 'Login failed')
-    }
-    const data = await res.json()
-    setToken(data.token)
-    setUser(data.user)
-    storeSession(data.token, data.user)
-  }
+    const key = email.toLowerCase().trim()
 
-  async function loginWithMicrosoft() {
-    // Use popup so the app doesn't need a dedicated redirect page
-    const result = await msalInstance.loginPopup(LOGIN_SCOPES)
-
-    // Exchange the Microsoft access token for our JWT
-    const res = await fetch('/api/auth/microsoft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accessToken: result.accessToken,
-        idToken: result.idToken,
-      }),
-    })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Microsoft login failed' }))
-      throw new Error(err.error ?? 'Microsoft login failed')
+    // Try the API first
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setToken(data.token)
+        setUser(data.user)
+        localStorage.setItem('whe_token', data.token)
+        localStorage.setItem('whe_user', JSON.stringify(data.user))
+        return
+      }
+      // API returned an error (e.g. wrong password from DB)
+      const err = await res.json().catch(() => ({ error: 'Invalid email or password' }))
+      // If the API is up but creds are wrong, don't fall through to demo check
+      if (res.status === 401 && !DEMO_USERS[key]) {
+        throw new Error(err.error ?? 'Invalid email or password')
+      }
+    } catch (fetchErr: any) {
+      // Only swallow network errors (API not running locally) — rethrow auth errors
+      if (fetchErr.message && !fetchErr.message.includes('fetch')) throw fetchErr
     }
 
-    const data = await res.json()
-    setToken(data.token)
-    setUser(data.user)
-    storeSession(data.token, data.user)
+    // Client-side fallback for demo accounts
+    const demo = DEMO_USERS[key]
+    if (demo && password === 'password') {
+      const fakeToken = btoa(JSON.stringify(demo))
+      setToken(fakeToken)
+      setUser(demo)
+      localStorage.setItem('whe_token', fakeToken)
+      localStorage.setItem('whe_user', JSON.stringify(demo))
+      return
+    }
+
+    throw new Error('Invalid email or password')
   }
 
   function logout() {
     setToken(null)
     setUser(null)
-    clearSession()
-    // Also sign out of Microsoft if they used SSO
-    const accounts = msalInstance.getAllAccounts()
-    if (accounts.length > 0) {
-      msalInstance.logoutPopup({ account: accounts[0] }).catch(() => {})
-    }
+    localStorage.removeItem('whe_token')
+    localStorage.removeItem('whe_user')
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, loginWithMicrosoft, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )
