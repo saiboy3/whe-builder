@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Lock, Plus, Copy, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
-import { PHASES, DISCIPLINES } from '../types'
 
 interface TemplateTask { id: string; phase: string; discipline: string; taskName: string }
 interface Template { id: string; name: string; description: string; isLocked: boolean; tasks: TemplateTask[] }

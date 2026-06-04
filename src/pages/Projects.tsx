@@ -121,7 +121,7 @@ export default function Projects() {
                   <div className="text-xs text-slate-400">{p.contractNumber}</div>
                 </td>
                 <td className="px-4 py-3.5 text-slate-600">{p.district}</td>
-                <td className="px-4 py-3.5 text-slate-600">{p.pm?.name ?? p.pm ?? '—'}</td>
+                <td className="px-4 py-3.5 text-slate-600">{p.pm ?? '—'}</td>
                 <td className="px-4 py-3.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge[p.status] ?? 'bg-slate-100 text-slate-500'}`}>
                     {(p.status ?? '').replace(/_/g, ' ')}

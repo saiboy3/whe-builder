@@ -1,6 +1,4 @@
-import { SAMPLE_PROJECTS } from '../data/sampleData'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { DISCIPLINES } from '../types'
 
 interface VarianceRow {
   discipline: string

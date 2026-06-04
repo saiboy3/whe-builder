@@ -9,7 +9,7 @@ export default function Reports() {
   const { projects } = useApp()
 
   const pmSummary = projects.reduce<Record<string, { projects: number; totalHours: number; avgAccuracy: number }>>((acc, p) => {
-    const pm = p.pm?.name ?? p.pm ?? 'Unassigned'
+    const pm = p.pm ?? 'Unassigned'
     if (!acc[pm]) acc[pm] = { projects: 0, totalHours: 0, avgAccuracy: 0 }
     acc[pm].projects += 1
     acc[pm].totalHours += (p.tasks ?? []).reduce((s: number, t: any) => s + totalHours(t.adjustedHours), 0)
@@ -42,7 +42,7 @@ export default function Reports() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="text-xs text-slate-400 mb-1">Active Projects</div>
-          <div className="text-3xl font-bold text-slate-800">{projects.filter(p => p.status === 'ACTIVE' || p.status === 'Active').length}</div>
+          <div className="text-3xl font-bold text-slate-800">{projects.filter(p => p.status === 'Active').length}</div>
           <div className="text-xs text-slate-400 mt-1">in estimation</div>
         </div>
       </div>

@@ -17,14 +17,6 @@ const stageIcon = {
   Rejected: <XCircle size={16} className="text-red-500" />,
 }
 
-const stageColor = {
-  'DRAFT': 'border-slate-200 bg-white',
-  'SUBMITTED': 'border-blue-300 bg-blue-50',
-  'PM_APPROVED': 'border-purple-300 bg-purple-50',
-  'PRINCIPAL_APPROVED': 'border-green-300 bg-green-50',
-  'REJECTED': 'border-red-300 bg-red-50',
-}
-
 export default function Approvals() {
   const { projects, updateProject, currentRole } = useApp()
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
@@ -33,39 +25,39 @@ export default function Approvals() {
   const project = projects.find(p => p.id === selectedId)
 
   function getStepStatus(stage: number) {
-    const status = project?.approvalStatus ?? 'DRAFT'
-    if (status === 'DRAFT' || status === 'Draft') return stage === 0 ? 'current' : 'pending'
-    if (status === 'SUBMITTED' || status === 'Submitted') return stage === 0 ? 'done' : stage === 1 ? 'current' : 'pending'
-    if (status === 'PM_APPROVED' || status === 'PM Approved') return stage <= 1 ? 'done' : 'current'
-    if (status === 'PRINCIPAL_APPROVED' || status === 'Principal Approved') return 'done'
-    if (status === 'REJECTED') return stage === 0 ? 'done' : 'rejected'
+    const status = project?.approvalStatus ?? 'Draft'
+    if (status === 'Draft') return stage === 0 ? 'current' : 'pending'
+    if (status === 'Submitted') return stage === 0 ? 'done' : stage === 1 ? 'current' : 'pending'
+    if (status === 'PM Approved') return stage <= 1 ? 'done' : 'current'
+    if (status === 'Principal Approved') return 'done'
+    if (status === 'Rejected') return stage === 0 ? 'done' : 'rejected'
     return 'pending'
   }
 
   function approve() {
     if (!project) return
-    const next = currentRole === 'Engineer' ? 'Submitted'
+    const next: typeof project.approvalStatus = currentRole === 'Engineer' ? 'Submitted'
       : currentRole === 'PM' ? 'PM Approved'
       : 'Principal Approved'
-    updateProject({ ...project, approvalStatus: next as any })
+    updateProject({ ...project, approvalStatus: next })
     setComment('')
   }
 
   function reject() {
     if (!project) return
-    updateProject({ ...project, approvalStatus: 'Rejected' as any })
+    updateProject({ ...project, approvalStatus: 'Rejected' })
     setComment('')
   }
 
   function submit() {
     if (!project) return
-    updateProject({ ...project, approvalStatus: 'Submitted' as any })
+    updateProject({ ...project, approvalStatus: 'Submitted' })
     setComment('')
   }
 
-  const canSubmit = currentRole === 'Engineer' && (project?.approvalStatus === 'Draft' || project?.approvalStatus === 'DRAFT')
-  const canApprove = (currentRole === 'PM' && (project?.approvalStatus === 'Submitted' || project?.approvalStatus === 'SUBMITTED'))
-    || (currentRole === 'Principal' && (project?.approvalStatus === 'PM Approved' || project?.approvalStatus === 'PM_APPROVED'))
+  const canSubmit = currentRole === 'Engineer' && project?.approvalStatus === 'Draft'
+  const canApprove = (currentRole === 'PM' && project?.approvalStatus === 'Submitted')
+    || (currentRole === 'Principal' && project?.approvalStatus === 'PM Approved')
   const canReject = canApprove
 
   return (
@@ -101,7 +93,7 @@ export default function Approvals() {
             <>
               <div className="bg-white rounded-xl border border-slate-200 p-5">
                 <h2 className="font-bold text-slate-800 mb-1">{project.name}</h2>
-                <p className="text-xs text-slate-400 mb-4">{project.contractNumber} · PM: {project.pm?.name ?? project.pm}</p>
+                <p className="text-xs text-slate-400 mb-4">{project.contractNumber} · PM: {project.pm}</p>
 
                 {/* Stage timeline */}
                 <div className="flex items-center gap-0">

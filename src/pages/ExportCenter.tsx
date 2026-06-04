@@ -37,7 +37,7 @@ export default function ExportCenter() {
       ['Contract Number:', project!.contractNumber],
       ['Project Name:', project!.name],
       ['District:', project!.district],
-      ['Project Manager:', project!.pm?.name ?? project!.pm ?? ''],
+      ['Project Manager:', project!.pm ?? ''],
       ['Date:', new Date().toLocaleDateString()],
       ['Approval Status:', project!.approvalStatus],
     ]
@@ -112,7 +112,7 @@ export default function ExportCenter() {
       </head><body>
       <h1>MassDOT Work Hour Estimate</h1>
       <p><strong>Contract:</strong> ${project!.contractNumber} &nbsp; <strong>Project:</strong> ${project!.name}</p>
-      <p><strong>District:</strong> ${project!.district} &nbsp; <strong>PM:</strong> ${project!.pm?.name ?? project!.pm ?? ''} &nbsp; <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p><strong>District:</strong> ${project!.district} &nbsp; <strong>PM:</strong> ${project!.pm ?? ''} &nbsp; <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
       <br>
       <table>
         <tr><th>Phase</th><th>Discipline</th><th>Task</th><th>Est. Hours</th><th>Factor</th><th>Adj. Hours</th></tr>

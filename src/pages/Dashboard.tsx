@@ -22,11 +22,11 @@ export default function Dashboard() {
   const { projects } = useApp()
   const navigate = useNavigate()
 
-  const active = projects.filter(p => p.status === 'ACTIVE' || p.status === 'Active')
+  const active = projects.filter(p => p.status === 'Active')
   const awaitingApproval = projects.filter(p =>
-    p.approvalStatus === 'SUBMITTED' || p.approvalStatus === 'PM_APPROVED' || p.status === 'AWAITING_APPROVAL'
+    p.approvalStatus === 'Submitted' || p.approvalStatus === 'PM Approved' || p.status === 'Awaiting Approval'
   )
-  const redRisk = projects.filter(p => p.risk === 'RED' || p.risk === 'red')
+  const redRisk = projects.filter(p => p.risk === 'red')
 
   const avgAccuracy = 81
 
@@ -114,7 +114,7 @@ export default function Dashboard() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-slate-800 truncate">{p.name}</div>
-                  <div className="text-xs text-slate-500">PM: {p.pm?.name ?? p.pm}</div>
+                  <div className="text-xs text-slate-500">PM: {p.pm}</div>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.approvalStatus] ?? 'bg-slate-100'}`}>
                   {(p.approvalStatus ?? '').replace(/_/g, ' ')}

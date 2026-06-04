@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Plus, Trash2, Copy, Save, AlertCircle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import type { WBSTask, Phase, Discipline } from '../types'
+import type { WBSTask, Phase, Discipline, Project } from '../types'
 import { STAFF_CATEGORIES, PHASES, DISCIPLINES, DEFAULT_RATES, OVERHEAD_MULTIPLIER, PROFIT_RATE } from '../types'
 
 type GroupKey = `${Phase}||${Discipline}`
@@ -71,7 +71,7 @@ export default function EstimationBuilder() {
       const adjustedHours = { ...t.adjustedHours, [cat]: Math.round(value * t.factor) }
       return { ...t, hours, adjustedHours }
     })
-    updateProject({ ...project, tasks: updated, updatedAt: new Date().toISOString() })
+    updateProject({ ...project, tasks: updated, updatedAt: new Date().toISOString() } as Project)
   }
 
   function updateFactor(taskId: string, factor: number) {
@@ -82,7 +82,7 @@ export default function EstimationBuilder() {
       )
       return { ...t, factor, adjustedHours }
     })
-    updateProject({ ...project, tasks: updated })
+    updateProject({ ...project, tasks: updated } as Project)
   }
 
   function addTask(phase: Phase, discipline: Discipline) {
@@ -95,11 +95,11 @@ export default function EstimationBuilder() {
       factor: 1.0,
       notes: '',
     }
-    updateProject({ ...project, tasks: [...tasks, newTask] })
+    updateProject({ ...project, tasks: [...tasks, newTask] } as Project)
   }
 
   function deleteTask(taskId: string) {
-    updateProject({ ...project, tasks: tasks.filter(t => t.id !== taskId) })
+    updateProject({ ...project, tasks: tasks.filter(t => t.id !== taskId) } as Project)
   }
 
   function handleSave() {
@@ -238,7 +238,7 @@ export default function EstimationBuilder() {
                                   value={task.taskName}
                                   onChange={e => {
                                     const updated = tasks.map(t => t.id === task.id ? { ...t, taskName: e.target.value } : t)
-                                    updateProject({ ...project, tasks: updated })
+                                    updateProject({ ...project, tasks: updated } as Project)
                                   }}
                                   className="text-xs text-slate-700 bg-transparent outline-none w-full hover:bg-white focus:bg-white focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5"
                                 />
