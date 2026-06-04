@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Sparkles, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Loader2, Download, Plus } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Loader2, Plus } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { STAFF_CATEGORIES, DEFAULT_RATES } from '../types'
-import type { WBSTask, Phase } from '../types'
+import { STAFF_CATEGORIES } from '../types'
+import type { WBSTask, Phase, Discipline } from '../types'
 
 const PROJECT_TYPES = ['Roadway Reconstruction', 'Bridge Rehabilitation', 'Intersection Safety', 'Drainage Improvement', 'Corridor Study', 'Resurfacing', 'Signal Upgrade']
 const DISTRICTS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6']
@@ -29,9 +29,6 @@ interface EstimateResult {
   assumptions: string[]
 }
 
-function totalHours(h: Record<string, number>) {
-  return Object.values(h).reduce((s, v) => s + (v || 0), 0)
-}
 
 export default function EstimationAssistant() {
   const { projects, selectedProjectId, updateProject } = useApp()
@@ -98,7 +95,7 @@ export default function EstimationAssistant() {
       d.tasks.map((t, i) => ({
         id: `ai-${d.discipline}-${i}-${Date.now()}`,
         phase: t.phase as Phase,
-        discipline: d.discipline,
+        discipline: d.discipline as Discipline,
         taskName: t.taskName,
         hours: t.hours,
         adjustedHours: t.hours,

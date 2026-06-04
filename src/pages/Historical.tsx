@@ -46,8 +46,6 @@ type Tab = 'variance' | 'scatter' | 'projects'
 export default function Historical() {
   const [tab, setTab] = useState<Tab>('variance')
 
-  const maxActual = Math.max(...PROJECTS.map(p => p.actual)) + 100
-
   return (
     <div className="p-6 space-y-5">
       <h1 className="text-2xl font-bold text-slate-800">Historical Analytics</h1>
