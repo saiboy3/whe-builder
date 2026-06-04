@@ -18,15 +18,6 @@ const WHE_COL_MAP: Record<number, string> = {
   10: 'Clerical',
 }
 
-const SECTION_LABELS: Record<string, string> = {
-  '1': 'Preliminary Design', '10': 'Preliminary Design', '11': 'Preliminary Design', '12': 'Preliminary Design', '13': 'Preliminary Design',
-  '15': 'Preliminary Design',
-  '2': '25% Design', '3': '25% Design', '35': '25% Design',
-  '4': '75% Design',
-  '45': '100% / PS&E',
-  '5': '100% / PS&E', '6': '75% Design', '7': 'Preliminary Design', '75': '75% Design',
-  '8': '100% / PS&E', '9': '100% / PS&E',
-}
 
 function taskToPhase(taskNum: number): string {
   const prefix = String(taskNum).slice(0, 2)

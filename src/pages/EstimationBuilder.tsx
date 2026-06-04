@@ -233,7 +233,7 @@ export default function EstimationBuilder() {
                         {!discCollapsed && dTasks.map((task, idx) => {
                           const est = totalHours(task.hours)
                           const adj = totalHours(task.adjustedHours)
-                          const labor = totalCost(task.adjustedHours)
+                          const labor = totalCost(task.adjustedHours, rates)
                           const isEven = idx % 2 === 0
 
                           return (
