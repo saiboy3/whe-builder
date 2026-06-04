@@ -119,16 +119,16 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
   const total = disciplineResults.flatMap(d => d.tasks).reduce((s, t) => s + t.likelyHours, 0)
 
   return {
-    summary: `Rules-based estimate for a ${projectType} project at complexity ${complexity}/5 using MassDOT standard baselines. Add ANTHROPIC_API_KEY to Vercel for AI-powered estimates with detailed rationale.`,
+    summary: `MassDOT baseline estimate for a ${projectType} project at complexity ${complexity}/5. Hours derived from standard WBS task baselines with a ${multiplier.toFixed(1)}x complexity multiplier applied.`,
     confidenceScore: 65,
     totalEstimatedHours: total,
     disciplines: disciplineResults,
     riskFlags: complexity >= 4 ? ['High complexity — consider adding 20–30% contingency'] : [],
     similarProjects: [],
     assumptions: [
-      'Based on MassDOT standard WBS baselines',
-      `Complexity multiplier: ${multiplier.toFixed(1)}x`,
-      'Add ANTHROPIC_API_KEY in Vercel env vars for AI-powered estimates',
+      'Based on MassDOT standard WBS task baselines',
+      `Complexity multiplier applied: ${multiplier.toFixed(1)}x`,
+      'Review and adjust hours per discipline before submission',
     ],
   }
 }

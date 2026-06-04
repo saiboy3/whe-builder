@@ -3,6 +3,7 @@ import { Sparkles, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Loade
 import { useApp } from '../context/AppContext'
 import { STAFF_CATEGORIES } from '../types'
 import type { WBSTask, Phase, Discipline } from '../types'
+import { getTaskNumber } from '../lib/taskNumbers'
 
 const PROJECT_TYPES = ['Roadway Reconstruction', 'Bridge Rehabilitation', 'Intersection Safety', 'Drainage Improvement', 'Corridor Study', 'Resurfacing', 'Signal Upgrade']
 const DISTRICTS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6']
@@ -95,6 +96,7 @@ export default function EstimationAssistant() {
     const newTasks: WBSTask[] = result.disciplines.flatMap(d =>
       d.tasks.map((t, i) => ({
         id: `ai-${d.discipline}-${i}-${Date.now()}`,
+        taskNumber: getTaskNumber(t.phase, d.discipline, t.taskName),
         phase: t.phase as Phase,
         discipline: d.discipline as Discipline,
         taskName: t.taskName,
@@ -272,14 +274,16 @@ export default function EstimationAssistant() {
                 </div>
               )}
 
-              {/* Assumptions */}
-              {result.assumptions.length > 0 && (
+              {/* Assumptions — filter out setup/env var messages */}
+              {result.assumptions.filter(a => !a.toLowerCase().includes('anthropic') && !a.toLowerCase().includes('env var') && !a.toLowerCase().includes('vercel')).length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold text-sm">
                     <CheckCircle2 size={15} /> Assumptions
                   </div>
                   <ul className="space-y-1">
-                    {result.assumptions.map((a, i) => <li key={i} className="text-xs text-blue-700 flex items-start gap-2"><span className="mt-0.5">•</span>{a}</li>)}
+                    {result.assumptions
+                      .filter(a => !a.toLowerCase().includes('anthropic') && !a.toLowerCase().includes('env var') && !a.toLowerCase().includes('vercel'))
+                      .map((a, i) => <li key={i} className="text-xs text-blue-700 flex items-start gap-2"><span className="mt-0.5">•</span>{a}</li>)}
                   </ul>
                 </div>
               )}
@@ -312,6 +316,7 @@ export default function EstimationAssistant() {
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="bg-slate-50 text-slate-500 font-semibold">
+                            <th className="px-3 py-2 text-center w-16">Task #</th>
                             <th className="px-4 py-2 text-left">Phase / Task</th>
                             {STAFF_CATEGORIES.map(c => (
                               <th key={c} className="px-2 py-2 text-center min-w-[52px]">{c.split(' ').pop()}</th>
@@ -324,6 +329,9 @@ export default function EstimationAssistant() {
                         <tbody className="divide-y divide-slate-50">
                           {disc.tasks.map((task, i) => (
                             <tr key={i} className="hover:bg-purple-50 group">
+                              <td className="px-3 py-2 text-center font-mono font-bold text-amber-700">
+                                {getTaskNumber(task.phase, disc.discipline, task.taskName)}
+                              </td>
                               <td className="px-4 py-2">
                                 <div className="font-medium text-slate-700">{task.taskName}</div>
                                 <div className="text-slate-400 text-xs">{task.phase}</div>

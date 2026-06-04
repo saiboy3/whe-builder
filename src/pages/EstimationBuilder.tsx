@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'luci
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
 import { STAFF_CATEGORIES, PHASES, DISCIPLINES, DEFAULT_RATES, OVERHEAD_MULTIPLIER, PROFIT_RATE } from '../types'
+import { getTaskNumber } from '../lib/taskNumbers'
 
 type GroupKey = `${Phase}||${Discipline}`
 
@@ -86,10 +87,12 @@ export default function EstimationBuilder() {
   }
 
   function addTask(phase: Phase, discipline: Discipline) {
+    const taskName = 'New Task'
     const newTask: WBSTask = {
       id: `t${Date.now()}`,
+      taskNumber: getTaskNumber(phase, discipline, taskName),
       phase, discipline,
-      taskName: 'New Task',
+      taskName,
       hours: Object.fromEntries(STAFF_CATEGORIES.map(c => [c, 0])),
       adjustedHours: Object.fromEntries(STAFF_CATEGORIES.map(c => [c, 0])),
       factor: 1.0,
@@ -146,7 +149,8 @@ export default function EstimationBuilder() {
         <table className="w-full text-sm border-collapse min-w-max">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-800 text-white">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold w-64 sticky left-0 bg-slate-800">Task</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold sticky left-0 bg-slate-800 w-20">Task #</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold w-56 bg-slate-800">Task Name</th>
               {STAFF_CATEGORIES.map(cat => (
                 <th key={cat} className="px-2 py-2.5 text-center text-xs font-semibold min-w-[70px]">
                   <div>{cat.split(' ').map((w, i) => i === 0 ? w : <br key={i}/>)}</div>
@@ -176,7 +180,7 @@ export default function EstimationBuilder() {
                     className="bg-slate-700 text-white cursor-pointer select-none"
                     onClick={() => toggleCollapse(phaseKey)}
                   >
-                    <td className="px-3 py-2 font-bold text-sm sticky left-0 bg-slate-700" colSpan={STAFF_CATEGORIES.length + 2}>
+                    <td className="px-3 py-2 font-bold text-sm sticky left-0 bg-slate-700" colSpan={STAFF_CATEGORIES.length + 3}>
                       <span className="flex items-center gap-2">
                         {phaseCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                         {phase}
@@ -205,7 +209,7 @@ export default function EstimationBuilder() {
                           className="bg-slate-100 cursor-pointer select-none border-b border-slate-200"
                           onClick={() => toggleCollapse(discKey)}
                         >
-                          <td className="px-5 py-1.5 font-semibold text-xs text-slate-600 sticky left-0 bg-slate-100" colSpan={STAFF_CATEGORIES.length + 2}>
+                          <td className="px-5 py-1.5 font-semibold text-xs text-slate-600 sticky left-0 bg-slate-100" colSpan={STAFF_CATEGORIES.length + 3}>
                             <span className="flex items-center gap-2">
                               {discCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                               {discipline}
@@ -233,7 +237,10 @@ export default function EstimationBuilder() {
 
                           return (
                             <tr key={task.id} className={`border-b border-slate-100 hover:bg-amber-50 group ${isEven ? 'bg-white' : 'bg-slate-50/50'}`}>
-                              <td className={`px-6 py-1.5 sticky left-0 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
+                              <td className={`px-3 py-1.5 sticky left-0 text-center font-mono text-xs font-semibold text-amber-700 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
+                                {task.taskNumber || getTaskNumber(task.phase, task.discipline, task.taskName)}
+                              </td>
+                              <td className={`px-3 py-1.5 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
                                 <input
                                   value={task.taskName}
                                   onChange={e => {
@@ -291,7 +298,8 @@ export default function EstimationBuilder() {
           {/* Grand total footer */}
           <tfoot>
             <tr className="bg-slate-800 text-white font-bold sticky bottom-0">
-              <td className="px-4 py-3 text-sm sticky left-0 bg-slate-800">TOTAL</td>
+              <td className="px-3 py-3 text-xs sticky left-0 bg-slate-800"></td>
+              <td className="px-4 py-3 text-sm bg-slate-800">TOTAL</td>
               {STAFF_CATEGORIES.map(cat => {
                 const catTotal = tasks.reduce((s, t) => s + (t.hours[cat] || 0), 0)
                 return <td key={cat} className="px-2 py-3 text-center text-xs">{catTotal}</td>

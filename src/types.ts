@@ -35,6 +35,7 @@ export interface HourEntry {
 
 export interface WBSTask {
   id: string
+  taskNumber: string
   phase: Phase
   discipline: Discipline
   taskName: string

@@ -1,4 +1,5 @@
 import type { Project, WBSTask } from '../types'
+import { getTaskNumber } from '../lib/taskNumbers'
 
 const makeHours = (vals: number[]) => ({
   'Principal': vals[0] ?? 0,
@@ -20,6 +21,7 @@ const task = (
   notes = ''
 ): WBSTask => ({
   id,
+  taskNumber: getTaskNumber(phase, discipline, taskName),
   phase,
   discipline,
   taskName,
