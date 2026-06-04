@@ -1,27 +1,32 @@
-// HED-640 Salary Rate Escalation Engine
-// Source: MassDOT Highway Division Form HED-640 (2019)
-//
-// Design Phase Mean Rate   = Existing Rate × (1 + r^d) / 2
-// Construction Phase Rate  = Existing Rate × r^d × (1 + r^c) / 2
-// where r = 1.03 (3% annual inflation), d = design duration (years), c = construction duration (years)
+// Rate Configuration
+// Primary: billing rates entered directly (what you charge clients)
+// Optional: HED-640 calculator to derive billing rates from direct salaries
 
 export const ANNUAL_INFLATION = 1.03
 
 export interface RateConfig {
-  // Firm's current average direct salary rates ($/hr)
-  existingRates: Record<string, number>
-  // Project durations
+  // Direct billing rates ($/hr) — primary input
+  billingRates: Record<string, number>
+  // HED-640 reference fields (optional, for MassDOT submissions)
+  directSalaryRates: Record<string, number>
   designMonths: number
   constructionMonths: number
-  // Overhead multiplier (firm-specific, typically 1.5–2.5)
   overheadMultiplier: number
-  // Profit rate
   profitRate: number
 }
 
 export const DEFAULT_RATE_CONFIG: RateConfig = {
-  existingRates: {
-    'Principal':       110,   // PIC — direct salary, not billing rate
+  billingRates: {
+    'Principal':       225,
+    'Project Manager': 185,
+    'Senior Engineer': 160,
+    'Engineer':        130,
+    'Designer':        110,
+    'CADD':             95,
+    'Clerical':         75,
+  },
+  directSalaryRates: {
+    'Principal':       110,
     'Project Manager':  90,
     'Senior Engineer':  75,
     'Engineer':         60,
@@ -35,61 +40,48 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
   profitRate: 0.10,
 }
 
-/** Escalation factor for design phase */
+// HED-640 formula helpers (reference / audit use)
 export function designEscalationFactor(designMonths: number): number {
   const d = designMonths / 12
   return (1 + Math.pow(ANNUAL_INFLATION, d)) / 2
 }
 
-/** Escalation factor for construction phase */
 export function constructionEscalationFactor(designMonths: number, constructionMonths: number): number {
   const d = designMonths / 12
   const c = constructionMonths / 12
   return Math.pow(ANNUAL_INFLATION, d) * (1 + Math.pow(ANNUAL_INFLATION, c)) / 2
 }
 
-/** Mean direct salary rate for design phase */
-export function designMeanRate(existingRate: number, designMonths: number): number {
-  return existingRate * designEscalationFactor(designMonths)
-}
-
-/** Billing rate = mean salary × overhead multiplier × (1 + profit) */
-export function billingRate(
-  existingRate: number,
-  designMonths: number,
-  overheadMultiplier: number,
-  profitRate: number
-): number {
-  const mean = designMeanRate(existingRate, designMonths)
-  return mean * overheadMultiplier * (1 + profitRate)
-}
-
-/** Compute all billing rates for a given config */
-export function computeBillingRates(config: RateConfig): Record<string, number> {
-  const result: Record<string, number> = {}
-  for (const [cat, rate] of Object.entries(config.existingRates)) {
-    result[cat] = Math.round(billingRate(rate, config.designMonths, config.overheadMultiplier, config.profitRate) * 100) / 100
-  }
-  return result
-}
-
-/** Compute mean direct salary rates (for HED-640 submission) */
 export function computeMeanSalaryRates(config: RateConfig): Record<string, number> {
   const factor = designEscalationFactor(config.designMonths)
   const result: Record<string, number> = {}
-  for (const [cat, rate] of Object.entries(config.existingRates)) {
+  for (const [cat, rate] of Object.entries(config.directSalaryRates)) {
     result[cat] = Math.round(rate * factor * 100) / 100
   }
   return result
 }
 
-// MassDOT standardized title mapping
+/** Derive billing rates from direct salaries using HED-640 formula */
+export function deriveBillingRates(config: RateConfig): Record<string, number> {
+  const factor = designEscalationFactor(config.designMonths)
+  const result: Record<string, number> = {}
+  for (const [cat, rate] of Object.entries(config.directSalaryRates)) {
+    result[cat] = Math.round(rate * factor * config.overheadMultiplier * (1 + config.profitRate) * 100) / 100
+  }
+  return result
+}
+
+/** Return billing rates — always the primary source */
+export function computeBillingRates(config: RateConfig): Record<string, number> {
+  return config.billingRates
+}
+
 export const MASSDOT_TITLE_MAP: Record<string, string> = {
-  'Principal':        'Principal In Charge (PIC)',
-  'Project Manager':  'Project Manager (PM)',
-  'Senior Engineer':  'Senior Engineer (SE)',
-  'Engineer':         'Engineer (Eng)',
-  'Designer':         'Assistant Engineer (AE)',
-  'CADD':             'Engineering Technician (ET)',
-  'Clerical':         'Administrative',
+  'Principal':        'PIC — Principal In Charge',
+  'Project Manager':  'PM — Project Manager',
+  'Senior Engineer':  'SE — Senior Engineer',
+  'Engineer':         'Eng — Engineer',
+  'Designer':         'AE — Assistant Engineer',
+  'CADD':             'ET — Engineering Technician',
+  'Clerical':         'Admin — Administrative',
 }
