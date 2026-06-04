@@ -21,13 +21,13 @@ export type Discipline =
   | 'Construction Support'
 
 export type StaffCategory =
-  | 'Principal'
-  | 'Project Manager'
-  | 'Senior Engineer'
-  | 'Engineer'
-  | 'Designer'
-  | 'CADD'
-  | 'Clerical'
+  | 'Principal In Charge (PIC)'
+  | 'Project Manager (PM)'
+  | 'Senior Engineer (SE)'
+  | 'Engineer (Eng)'
+  | 'Assistant Engineer (AE)'
+  | 'Engineering Technician (ET)'
+  | 'Administrative (Admin)'
 
 export interface HourEntry {
   [key: string]: number // staffCategory -> hours
@@ -66,13 +66,13 @@ export interface RateTable {
 }
 
 export const STAFF_CATEGORIES: StaffCategory[] = [
-  'Principal',
-  'Project Manager',
-  'Senior Engineer',
-  'Engineer',
-  'Designer',
-  'CADD',
-  'Clerical',
+  'Principal In Charge (PIC)',
+  'Project Manager (PM)',
+  'Senior Engineer (SE)',
+  'Engineer (Eng)',
+  'Assistant Engineer (AE)',
+  'Engineering Technician (ET)',
+  'Administrative (Admin)',
 ]
 
 export const PHASES: Phase[] = [
@@ -95,13 +95,13 @@ export const DISCIPLINES: Discipline[] = [
 ]
 
 export const DEFAULT_RATES: RateTable = {
-  'Principal': 225,
-  'Project Manager': 185,
-  'Senior Engineer': 160,
-  'Engineer': 130,
-  'Designer': 110,
-  'CADD': 95,
-  'Clerical': 75,
+  'Principal In Charge (PIC)': 225,
+  'Project Manager (PM)': 185,
+  'Senior Engineer (SE)': 160,
+  'Engineer (Eng)': 130,
+  'Assistant Engineer (AE)': 110,
+  'Engineering Technician (ET)': 95,
+  'Administrative (Admin)': 75,
 }
 
 export const OVERHEAD_MULTIPLIER = 1.85

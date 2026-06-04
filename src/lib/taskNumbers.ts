@@ -296,14 +296,15 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
 }
 
 // Staff category mapping: our labels → MassDOT form labels
+// Short grid labels (column headers in WBS table)
 export const STAFF_LABEL_MAP: Record<string, string> = {
-  'Principal':        'PIC',
-  'Project Manager':  'PM',
-  'Senior Engineer':  'SE',
-  'Engineer':         'Eng',
-  'Designer':         'AE',
-  'CADD':             'ET',
-  'Clerical':         'Admin',
+  'Principal In Charge (PIC)':    'PIC',
+  'Project Manager (PM)':         'PM',
+  'Senior Engineer (SE)':         'SE',
+  'Engineer (Eng)':               'Eng',
+  'Assistant Engineer (AE)':      'AE',
+  'Engineering Technician (ET)':  'ET',
+  'Administrative (Admin)':       'Admin',
 }
 
 export function getTaskNumber(phase: string, discipline: string, taskName: string): string {

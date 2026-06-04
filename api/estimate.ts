@@ -41,7 +41,15 @@ const DEFAULT_BASELINE: Record<string, number[]> = {
   '100% / PS&E':        [6, 12, 28, 40, 20, 40, 10],
 }
 
-const STAFF = ['Principal', 'Project Manager', 'Senior Engineer', 'Engineer', 'Designer', 'CADD', 'Clerical']
+const STAFF = [
+  'Principal In Charge (PIC)',
+  'Project Manager (PM)',
+  'Senior Engineer (SE)',
+  'Engineer (Eng)',
+  'Assistant Engineer (AE)',
+  'Engineering Technician (ET)',
+  'Administrative (Admin)',
+]
 
 const DISCIPLINE_MAP: Record<string, string[]> = {
   'Roadway Reconstruction': ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
@@ -100,20 +108,71 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
   },
 }
 
-function buildRulesEstimate(projectType: string, complexity: number, phases: string[]) {
-  const multiplier = 0.6 + (complexity - 1) * 0.2
+interface SizeFactors {
+  roadMiles: number
+  bridges: number
+  intersections: number
+}
+
+// Discipline-specific size scaling:
+//   Roadway/Drainage/Survey — scale with road miles
+//   Structures — scale with bridge count (each bridge is an independent deliverable)
+//   Traffic — scale with intersection count
+//   Environmental/Utilities/ROW — modest scale with road miles
+function disciplineSizeFactor(disc: string, sf: SizeFactors): number {
+  const miles = Math.max(0.5, sf.roadMiles)   // 0.5 mi minimum baseline
+  const bridges = Math.max(0, sf.bridges)
+  const intersections = Math.max(0, sf.intersections)
+
+  switch (disc) {
+    case 'Roadway':
+      // Linear with miles: 1 mi = 1.0x, 2 mi = 1.6x, 0.5 mi = 0.7x
+      return 0.5 + 0.5 * Math.sqrt(miles)
+    case 'Hydraulics/Drainage':
+      return 0.6 + 0.4 * Math.sqrt(miles)
+    case 'Survey':
+      return 0.5 + 0.5 * Math.sqrt(miles)
+    case 'Environmental':
+      return 0.7 + 0.3 * Math.sqrt(miles)
+    case 'Utilities':
+      return 0.6 + 0.4 * Math.sqrt(miles)
+    case 'Right-of-Way':
+      return 0.5 + 0.5 * Math.sqrt(miles)
+    case 'Structures':
+      // Each bridge is its own scope — additive
+      return bridges > 0 ? bridges : 1
+    case 'Traffic':
+      // Scale with intersection count: 2 intersections = baseline
+      return intersections > 0 ? 0.5 + 0.25 * intersections : 1
+    default:
+      return 1
+  }
+}
+
+function buildRulesEstimate(
+  projectType: string,
+  complexity: number,
+  phases: string[],
+  sf: SizeFactors
+) {
+  // Complexity multiplier: complexity 1 = 0.6x, 3 = 1.0x, 5 = 1.4x
+  const complexityMult = 0.6 + (complexity - 1) * 0.2
   const disciplines = DISCIPLINE_MAP[projectType] ?? ['Roadway', 'Traffic']
   const phaseBaselines = BASELINE[projectType] ?? DEFAULT_BASELINE
 
   const disciplineResults = disciplines.map((disc, dIdx) => {
-    const scale = dIdx === 0 ? 1 : 0.4
+    const primaryScale = dIdx === 0 ? 1 : 0.4   // primary discipline gets full baseline
+    const sizeFactor = disciplineSizeFactor(disc, sf)
+    const finalMult = complexityMult * primaryScale * sizeFactor
+
     const tasks = phases.flatMap(phase => {
       const taskNames = TASK_MAP[disc]?.[phase]
       if (!taskNames) return []
       const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12, 2]
       return taskNames.map(taskName => {
-        const hrs = base.map(h => Math.max(0, Math.round((h * multiplier * scale) / taskNames.length)))
+        const hrs = base.map(h => Math.max(0, Math.round((h * finalMult) / taskNames.length)))
         const likely = hrs.reduce((s, v) => s + v, 0)
+        const rationale = buildRationale(disc, phase, complexity, complexityMult, sizeFactor, sf)
         return {
           phase,
           taskName,
@@ -121,7 +180,7 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
           lowHours: Math.round(likely * 0.8),
           likelyHours: likely,
           highHours: Math.round(likely * 1.3),
-          rationale: `MassDOT baseline for ${disc} — ${phase} at complexity ${complexity}/5`,
+          rationale,
         }
       })
     })
@@ -129,20 +188,58 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
   })
 
   const total = disciplineResults.flatMap(d => d.tasks).reduce((s, t) => s + t.likelyHours, 0)
+  const riskFlags: string[] = []
+  if (complexity >= 4) riskFlags.push('High complexity — consider adding 20–30% contingency')
+  if (sf.bridges > 2) riskFlags.push(`${sf.bridges} bridges — structural hours scale per bridge; verify individual bridge scope`)
+  if (sf.roadMiles > 3) riskFlags.push(`${sf.roadMiles} road miles — survey and ROW hours may need further review`)
 
   return {
-    summary: `MassDOT baseline estimate for a ${projectType} project at complexity ${complexity}/5. Hours derived from standard WBS task baselines with a ${multiplier.toFixed(1)}x complexity multiplier applied.`,
+    summary: buildSummary(projectType, complexity, complexityMult, sf, total),
     confidenceScore: 65,
     totalEstimatedHours: total,
     disciplines: disciplineResults,
-    riskFlags: complexity >= 4 ? ['High complexity — consider adding 20–30% contingency'] : [],
+    riskFlags,
     similarProjects: [],
-    assumptions: [
-      'Based on MassDOT standard WBS task baselines',
-      `Complexity multiplier applied: ${multiplier.toFixed(1)}x`,
-      'Review and adjust hours per discipline before submission',
-    ],
+    assumptions: buildAssumptions(complexity, complexityMult, sf),
   }
+}
+
+function buildSummary(type: string, complexity: number, mult: number, sf: SizeFactors, total: number): string {
+  const sizeDesc = [
+    sf.roadMiles > 0 ? `${sf.roadMiles} road mile${sf.roadMiles !== 1 ? 's' : ''}` : '',
+    sf.bridges > 0 ? `${sf.bridges} bridge${sf.bridges !== 1 ? 's' : ''}` : '',
+    sf.intersections > 0 ? `${sf.intersections} intersection${sf.intersections !== 1 ? 's' : ''}` : '',
+  ].filter(Boolean).join(', ')
+
+  return `MassDOT baseline estimate for a ${type} project at complexity ${complexity}/5 (${mult.toFixed(1)}x multiplier).` +
+    (sizeDesc ? ` Sized for ${sizeDesc}.` : '') +
+    ` Total likely hours: ${total.toLocaleString()}.`
+}
+
+function buildRationale(
+  disc: string, phase: string, complexity: number,
+  complexityMult: number, sizeFactor: number, sf: SizeFactors
+): string {
+  const sizeNote = disc === 'Structures' && sf.bridges > 0
+    ? `${sf.bridges} bridge(s) × per-bridge baseline`
+    : disc === 'Traffic' && sf.intersections > 0
+    ? `${sf.intersections} intersection(s) → ${sizeFactor.toFixed(2)}x size factor`
+    : sf.roadMiles > 0
+    ? `${sf.roadMiles} mi → ${sizeFactor.toFixed(2)}x size factor`
+    : 'default 1.0x size factor'
+  return `${disc} / ${phase}: complexity ${complexity}/5 (${complexityMult.toFixed(1)}x) × ${sizeNote}`
+}
+
+function buildAssumptions(complexity: number, mult: number, sf: SizeFactors): string[] {
+  const out = [
+    `Complexity ${complexity}/5 → ${mult.toFixed(2)}x multiplier (1 = 0.6x, 3 = 1.0x, 5 = 1.4x)`,
+  ]
+  if (sf.roadMiles > 0) out.push(`Road miles: ${sf.roadMiles} → roadway/drainage/survey hours scale as 0.5 + 0.5√miles`)
+  if (sf.bridges > 0) out.push(`Bridges: ${sf.bridges} → structural hours = bridges × per-bridge baseline`)
+  if (sf.intersections > 0) out.push(`Intersections: ${sf.intersections} → traffic hours scale as 0.5 + 0.25 × count`)
+  out.push('Baseline hours sourced from MassDOT WHE Form 1.3 standard task table')
+  out.push('Low = likely × 0.8, High = likely × 1.3')
+  return out
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -163,7 +260,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return res.json(buildRulesEstimate(projectType, Number(complexity), phases))
+    const sf = { roadMiles: parseFloat(roadMiles) || 0, bridges: Number(bridges), intersections: Number(intersections) }
+    return res.json(buildRulesEstimate(projectType, Number(complexity), phases, sf))
   }
 
   const prompt = `You are a senior civil engineering estimator with 20+ years of MassDOT project experience. Produce a detailed work hour estimate using the official MassDOT WHE Form 1.3 task numbering.
@@ -246,7 +344,7 @@ Return ONLY valid JSON, no markdown fences:
     console.error('Claude error:', err?.message ?? err)
     // Fall back to rules rather than showing an error
     return res.json({
-      ...buildRulesEstimate(projectType, Number(complexity), phases),
+      ...buildRulesEstimate(projectType, Number(complexity), phases, { roadMiles: parseFloat(roadMiles) || 0, bridges: Number(bridges), intersections: Number(intersections) }),
       summary: `Estimate generated using rules-based engine (Claude unavailable: ${String(err?.message ?? '').slice(0, 100)}). Results reflect MassDOT standard baselines.`,
     })
   }

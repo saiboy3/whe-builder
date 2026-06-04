@@ -2,13 +2,13 @@ import type { Project, WBSTask } from '../types'
 import { getTaskNumber } from '../lib/taskNumbers'
 
 const makeHours = (vals: number[]) => ({
-  'Principal': vals[0] ?? 0,
-  'Project Manager': vals[1] ?? 0,
-  'Senior Engineer': vals[2] ?? 0,
-  'Engineer': vals[3] ?? 0,
-  'Designer': vals[4] ?? 0,
-  'CADD': vals[5] ?? 0,
-  'Clerical': vals[6] ?? 0,
+  'Principal In Charge (PIC)': vals[0] ?? 0,
+  'Project Manager (PM)': vals[1] ?? 0,
+  'Senior Engineer (SE)': vals[2] ?? 0,
+  'Engineer (Eng)': vals[3] ?? 0,
+  'Assistant Engineer (AE)': vals[4] ?? 0,
+  'Engineering Technician (ET)': vals[5] ?? 0,
+  'Administrative (Admin)': vals[6] ?? 0,
 })
 
 const task = (

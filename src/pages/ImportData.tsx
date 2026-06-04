@@ -9,13 +9,13 @@ import { STAFF_CATEGORIES } from '../types'
 // Col B (index 1) = task number, Col C (index 2) = task name
 // Col E (4) = PIC, F (5) = PM, G (6) = SE, H (7) = Eng, I (8) = AE, J (9) = ET, K (10) = Admin
 const WHE_COL_MAP: Record<number, string> = {
-  4: 'Principal',
-  5: 'Project Manager',
-  6: 'Senior Engineer',
-  7: 'Engineer',
-  8: 'Designer',
-  9: 'CADD',
-  10: 'Clerical',
+  4: 'Principal In Charge (PIC)',
+  5: 'Project Manager (PM)',
+  6: 'Senior Engineer (SE)',
+  7: 'Engineer (Eng)',
+  8: 'Assistant Engineer (AE)',
+  9: 'Engineering Technician (ET)',
+  10: 'Administrative (Admin)',
 }
 
 
@@ -139,13 +139,13 @@ function parseCSV(text: string): Partial<HistoricalRecord>[] {
     const get = (key: string) => vals[header.indexOf(key)] ?? ''
     const estimatedHours: Record<string, number> = {}
     const actualHours: Record<string, number> = {}
-    for (const cat of STAFF_CATEGORIES) {
-      const key = cat.toLowerCase().replace(/ /g, '_')
-      const est = Number(get(`est_${key}`))
-      const act = Number(get(`act_${key}`))
+    STAFF_CATEGORIES.forEach((cat, idx) => {
+      const shortKey = CSV_KEYS[idx]
+      const est = Number(get(`est_${shortKey}`))
+      const act = Number(get(`act_${shortKey}`))
       if (est > 0) estimatedHours[cat] = est
       if (act > 0) actualHours[cat] = act
-    }
+    })
     return {
       id: `csv-${Date.now()}-${i}`,
       contractNumber: get('contract_number'),
@@ -164,9 +164,12 @@ function parseCSV(text: string): Partial<HistoricalRecord>[] {
   }).filter(r => r.taskNumber && r.taskName)
 }
 
+// Short keys for CSV columns (PIC, PM, SE, Eng, AE, ET, Admin)
+const CSV_KEYS = ['PIC', 'PM', 'SE', 'Eng', 'AE', 'ET', 'Admin']
+
 function generateCSVTemplate(): string {
-  const staffEst = STAFF_CATEGORIES.map(c => `est_${c.toLowerCase().replace(/ /g, '_')}`).join(',')
-  const staffAct = STAFF_CATEGORIES.map(c => `act_${c.toLowerCase().replace(/ /g, '_')}`).join(',')
+  const staffEst = CSV_KEYS.map(k => `est_${k}`).join(',')
+  const staffAct = CSV_KEYS.map(k => `act_${k}`).join(',')
   const header = `contract_number,project_name,project_type,district,phase,task_number,task_name,discipline,completed_date,${staffEst},${staffAct}`
   const example = `107624,Route 9 Corridor,Roadway Reconstruction,District 3,25% Design,305,Preliminary Horizontal Geometry,Roadway,2025-06-01,2,4,16,32,24,40,2,2,5,18,35,26,42,2`
   return `${header}\n${example}\n`
