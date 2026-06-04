@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { MsalProvider } from '@azure/msal-react'
+import { msalInstance } from './lib/msalConfig'
 import { AppProvider } from './context/AppContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
@@ -55,10 +57,12 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
-    </AuthProvider>
+    <MsalProvider instance={msalInstance}>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </AuthProvider>
+    </MsalProvider>
   )
 }

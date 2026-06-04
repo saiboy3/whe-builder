@@ -9,12 +9,25 @@ const DEMO_USERS = [
   { label: 'Engineer', email: 'lisa@firma.com' },
 ]
 
+// Microsoft logo SVG
+function MicrosoftLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+    </svg>
+  )
+}
+
 export default function Login() {
-  const { login } = useAuth()
+  const { login, loginWithMicrosoft } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('password')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [msLoading, setMsLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,6 +39,26 @@ export default function Login() {
       setError(err.message ?? 'Login failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleMicrosoft() {
+    setError('')
+    setMsLoading(true)
+    try {
+      await loginWithMicrosoft()
+    } catch (err: any) {
+      // User cancelled popup or config not set
+      const msg: string = err.message ?? ''
+      if (msg.includes('popup_window_error') || msg.includes('user_cancelled')) {
+        setError('Sign-in was cancelled.')
+      } else if (msg.includes('no_client_id') || msg.includes('clientId')) {
+        setError('Microsoft SSO is not configured. Contact your administrator.')
+      } else {
+        setError(msg || 'Microsoft sign-in failed')
+      }
+    } finally {
+      setMsLoading(false)
     }
   }
 
@@ -55,6 +88,25 @@ export default function Login() {
             </div>
           )}
 
+          {/* Microsoft SSO button */}
+          <button
+            type="button"
+            onClick={handleMicrosoft}
+            disabled={msLoading || loading}
+            className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 disabled:opacity-60 text-slate-700 font-semibold py-2.5 rounded-lg transition-colors mb-4"
+          >
+            <MicrosoftLogo />
+            {msLoading ? 'Opening Microsoft sign-in...' : 'Sign in with Microsoft'}
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* Email/password form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
@@ -79,8 +131,8 @@ export default function Login() {
             </div>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors mt-2"
+              disabled={loading || msLoading}
+              className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
               <LogIn size={17} />
               {loading ? 'Signing in...' : 'Sign In'}
