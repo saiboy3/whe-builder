@@ -106,3 +106,20 @@ export const DEFAULT_RATES: RateTable = {
 
 export const OVERHEAD_MULTIPLIER = 1.85
 export const PROFIT_RATE = 0.10
+
+export interface HistoricalRecord {
+  id: string
+  contractNumber: string
+  projectName: string
+  projectType: string
+  district: string
+  phase: string
+  taskNumber: string
+  taskName: string
+  discipline: string
+  // Hours by staff category
+  estimatedHours: Record<string, number>
+  actualHours: Record<string, number>
+  completedDate: string
+  source: 'WHE Import' | 'CSV Import' | 'Manual'
+}

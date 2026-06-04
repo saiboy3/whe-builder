@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
-import { STAFF_CATEGORIES, PHASES, DISCIPLINES, DEFAULT_RATES, OVERHEAD_MULTIPLIER, PROFIT_RATE } from '../types'
+import { STAFF_CATEGORIES, PHASES, DISCIPLINES } from '../types'
 import { getTaskNumber, STAFF_LABEL_MAP } from '../lib/taskNumbers'
 
 type GroupKey = `${Phase}||${Discipline}`
@@ -11,12 +11,13 @@ function totalHours(entry: Record<string, number>) {
   return Object.values(entry).reduce((s, v) => s + (v || 0), 0)
 }
 
-function totalCost(entry: Record<string, number>) {
-  return STAFF_CATEGORIES.reduce((s, cat) => s + (entry[cat] || 0) * DEFAULT_RATES[cat], 0)
+function totalCost(entry: Record<string, number>, rates: Record<string, number>) {
+  return STAFF_CATEGORIES.reduce((s, cat) => s + (entry[cat] || 0) * (rates[cat] ?? 0), 0)
 }
 
 export default function EstimationBuilder() {
-  const { projects, selectedProjectId, updateProject } = useApp()
+  const { projects, selectedProjectId, updateProject, billingRates, rateConfig } = useApp()
+  const rates = billingRates
   const project = projects.find(p => p.id === selectedProjectId)
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -113,8 +114,8 @@ export default function EstimationBuilder() {
   // Grand totals
   const grandEstimated = tasks.reduce((s, t) => s + totalHours(t.hours), 0)
   const grandAdjusted = tasks.reduce((s, t) => s + totalHours(t.adjustedHours), 0)
-  const laborCost = tasks.reduce((s, t) => s + totalCost(t.adjustedHours), 0)
-  const totalWithOH = laborCost * OVERHEAD_MULTIPLIER * (1 + PROFIT_RATE)
+  const laborCost = tasks.reduce((s, t) => s + totalCost(t.adjustedHours, rates), 0)
+  const totalWithOH = laborCost  // billing rates already include OH + profit
 
   return (
     <div className="flex flex-col h-full">
@@ -307,7 +308,7 @@ export default function EstimationBuilder() {
               <td className="px-3 py-3 text-center">{grandEstimated}</td>
               <td className="px-3 py-3"></td>
               <td className="px-3 py-3 text-center text-amber-300">{grandAdjusted}</td>
-              <td className="px-3 py-3 text-center text-xs">${(tasks.reduce((s, t) => s + totalCost(t.adjustedHours), 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+              <td className="px-3 py-3 text-center text-xs">${(tasks.reduce((s, t) => s + totalCost(t.adjustedHours, rates), 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -318,10 +319,9 @@ export default function EstimationBuilder() {
       <div className="bg-slate-50 border-t border-slate-200 px-6 py-2 flex items-center gap-6 text-xs text-slate-400 flex-shrink-0">
         <span className="font-semibold text-slate-600">Billing Rates:</span>
         {STAFF_CATEGORIES.map(cat => (
-          <span key={cat}>{STAFF_LABEL_MAP[cat] ?? cat} ({cat.split(' ').pop()}): <span className="text-slate-600">${DEFAULT_RATES[cat]}/hr</span></span>
+          <span key={cat}>{STAFF_LABEL_MAP[cat] ?? cat}: <span className="text-slate-600">${rates[cat]?.toFixed(0)}/hr</span></span>
         ))}
-        <span className="ml-4">OH Multiplier: <span className="text-slate-600">{OVERHEAD_MULTIPLIER}x</span></span>
-        <span>Profit: <span className="text-slate-600">{(PROFIT_RATE * 100).toFixed(0)}%</span></span>
+        <span className="ml-4 text-amber-600 font-medium">OH {rateConfig.overheadMultiplier}x · Profit {(rateConfig.profitRate * 100).toFixed(0)}%</span>
       </div>
     </div>
   )

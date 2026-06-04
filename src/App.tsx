@@ -13,6 +13,8 @@ import Historical from './pages/Historical'
 import Approvals from './pages/Approvals'
 import ExportCenter from './pages/ExportCenter'
 import Reports from './pages/Reports'
+import ImportData from './pages/ImportData'
+import RateConfig from './pages/RateConfig'
 
 function AppShell() {
   const { user, isLoading } = useAuth()
@@ -44,6 +46,8 @@ function AppShell() {
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/export" element={<ExportCenter />} />
+              <Route path="/import" element={<ImportData />} />
+              <Route path="/rates" element={<RateConfig />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, FolderOpen, Calculator, LayoutTemplate,
   History, CheckCircle, FileBarChart2, HardHat, Download, Sparkles, LogOut,
+  Upload, Settings2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -15,6 +16,8 @@ const navItems = [
   { to: '/approvals', label: 'Approvals', icon: CheckCircle },
   { to: '/reports', label: 'Reports', icon: FileBarChart2 },
   { to: '/export', label: 'Export Center', icon: Download },
+  { to: '/import', label: 'Import Data', icon: Upload },
+  { to: '/rates', label: 'Rate Configuration', icon: Settings2 },
 ]
 
 const roleColors: Record<string, string> = {
