@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import Anthropic from '@anthropic-ai/sdk'
 import { cors } from './_lib/auth'
 
 // Rules-based baseline hours per phase: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
@@ -190,14 +189,27 @@ Return ONLY valid JSON, no markdown fences:
 }`
 
   try {
-    const client = new Anthropic({ apiKey })
-    const message = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      }),
     })
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text()
+      throw new Error(`Anthropic API ${anthropicRes.status}: ${errText.slice(0, 200)}`)
+    }
+
+    const anthropicData = await anthropicRes.json() as { content: Array<{ type: string; text: string }> }
+    const text = anthropicData.content[0]?.type === 'text' ? anthropicData.content[0].text : ''
     const clean = text.replace(/^```json\s*/m, '').replace(/^```\s*/m, '').replace(/\s*```$/m, '').trim()
     const parsed = JSON.parse(clean)
     return res.json(parsed)
