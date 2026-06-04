@@ -17,129 +17,137 @@ const STAFF = [
 ]
 
 // ─── Real MassDOT roadway project types (scraped from projectinfo portal) ──
-// Each entry: disciplines involved, baseline intensity, primary size metric
 interface ProjectTypeConfig {
-  disciplines: string[]
+  disciplines: string[]      // Roadway is ALWAYS first — every project needs FDR/DJW/PM/checklists
   baseline: keyof typeof PHASE_BASELINE
-  sizeMetric: 'roadMiles' | 'bridges' | 'intersections' | 'roadMiles+bridges'
-  intensityMult: number   // relative to a standard 1-mile reconstruction
+  sizeMetric: 'roadMiles' | 'bridges' | 'intersections'
+  intensityMult: number      // relative to standard 1-mile reconstruction
+  roadwayDesignScale: number // 0.0–1.0: how much physical road design (vs just management tasks)
+                             //   1.0 = full horizontal/vertical geometry, construction plans
+                             //   0.4 = pavement/resurfacing level geometry
+                             //   0.2 = coordination, FDR, DJW, checklists only (bridge, signal, etc.)
 }
 
 const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
+  // roadwayDesignScale: 1.0 = full horizontal/vertical geometry + construction plans
+  //                    0.5 = geometric work but lighter scope
+  //                    0.2 = FDR / DJW / management / checklists only (no new road design)
+
   // ── Full Reconstruction ──────────────────────────────────────────────────
   'Hwy Reconstr - Restr and Rehab': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0, roadwayDesignScale: 1.0,
   },
   'Hwy Reconstr - Major Widening': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.2,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.2, roadwayDesignScale: 1.0,
   },
   'Roadway Modernization': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.85,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.85, roadwayDesignScale: 0.9,
   },
   'Roadway Additional Capacity': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Right-of-Way'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.0, roadwayDesignScale: 1.0,
   },
   'Roadway Minor Widening': {
     disciplines: ['Roadway', 'Traffic', 'Survey'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.55,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 0.55, roadwayDesignScale: 0.7,
   },
   'New Road': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey', 'Environmental', 'Utilities', 'Right-of-Way'],
-    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.4,
+    baseline: 'reconstruction', sizeMetric: 'roadMiles', intensityMult: 1.4, roadwayDesignScale: 1.0,
   },
   'Roadway - Reconstr - Sidewalks and Curbing': {
     disciplines: ['Roadway', 'Traffic', 'Survey'],
-    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.5,
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.5, roadwayDesignScale: 0.6,
   },
   // ── Intersection ─────────────────────────────────────────────────────────
   'Intersection Reconstruction': {
     disciplines: ['Roadway', 'Traffic', 'Hydraulics/Drainage', 'Survey'],
-    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 1.0,
+    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 1.0, roadwayDesignScale: 0.7,
   },
   'Safety Improvements': {
-    disciplines: ['Traffic', 'Roadway'],
-    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 0.7,
+    disciplines: ['Roadway', 'Traffic', 'Survey'],
+    baseline: 'intersection', sizeMetric: 'intersections', intensityMult: 0.7, roadwayDesignScale: 0.4,
   },
   'Traffic Signal Upgrades': {
-    disciplines: ['Traffic'],
-    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 1.0,
+    disciplines: ['Roadway', 'Traffic'],
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 1.0, roadwayDesignScale: 0.25,
   },
   'Intelligent Transportation Sys': {
-    disciplines: ['Traffic', 'Roadway'],
-    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.9,
+    disciplines: ['Roadway', 'Traffic'],
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.9, roadwayDesignScale: 0.25,
   },
   // ── Bridge ───────────────────────────────────────────────────────────────
+  // Even pure bridge projects need Roadway tasks: FDR, DJW, Project Initiation, Checklists
   'Bridge Replacement': {
-    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey'],
-    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.0,
+    disciplines: ['Roadway', 'Structures', 'Hydraulics/Drainage', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.0, roadwayDesignScale: 0.2,
   },
   'Bridge Rehabilitation': {
-    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey'],
-    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.75,
+    disciplines: ['Roadway', 'Structures', 'Hydraulics/Drainage', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.75, roadwayDesignScale: 0.2,
   },
   'Bridge Deck Replacement': {
-    disciplines: ['Structures', 'Survey'],
-    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.6,
+    disciplines: ['Roadway', 'Structures', 'Survey'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 0.6, roadwayDesignScale: 0.15,
   },
   'New Bridge': {
-    disciplines: ['Structures', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
-    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.3,
+    disciplines: ['Roadway', 'Structures', 'Hydraulics/Drainage', 'Survey', 'Environmental'],
+    baseline: 'bridge', sizeMetric: 'bridges', intensityMult: 1.3, roadwayDesignScale: 0.3,
   },
   // ── Pavement ─────────────────────────────────────────────────────────────
   'Resurfacing': {
     disciplines: ['Roadway', 'Survey'],
-    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0,
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0, roadwayDesignScale: 0.4,
   },
   'Resurfacing Interstate': {
     disciplines: ['Roadway', 'Survey'],
-    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0,
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.0, roadwayDesignScale: 0.4,
   },
   'Resurfacing DOT Owned Non-Interstate': {
     disciplines: ['Roadway', 'Survey'],
-    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.9,
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.9, roadwayDesignScale: 0.35,
   },
   'Pavement Rehabilitation': {
     disciplines: ['Roadway', 'Survey', 'Hydraulics/Drainage'],
-    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.1,
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 1.1, roadwayDesignScale: 0.5,
   },
   'Limited Access Pavement Preservation': {
     disciplines: ['Roadway'],
-    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.6,
+    baseline: 'pavement', sizeMetric: 'roadMiles', intensityMult: 0.6, roadwayDesignScale: 0.3,
   },
   // ── Drainage / Culvert ───────────────────────────────────────────────────
   'Drainage': {
-    disciplines: ['Hydraulics/Drainage', 'Roadway', 'Environmental'],
-    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 1.0,
+    disciplines: ['Roadway', 'Hydraulics/Drainage', 'Environmental'],
+    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 1.0, roadwayDesignScale: 0.35,
   },
   'Culvert Replacement': {
-    disciplines: ['Hydraulics/Drainage', 'Structures', 'Survey'],
-    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 0.9,
+    disciplines: ['Roadway', 'Hydraulics/Drainage', 'Structures', 'Survey'],
+    baseline: 'drainage', sizeMetric: 'roadMiles', intensityMult: 0.9, roadwayDesignScale: 0.3,
   },
   // ── Active Transportation ────────────────────────────────────────────────
   'Bike Facility Construction': {
     disciplines: ['Roadway', 'Traffic', 'Survey'],
-    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.55,
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.55, roadwayDesignScale: 0.6,
   },
   'Shared Use Path Construction': {
     disciplines: ['Roadway', 'Survey', 'Environmental'],
-    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.6,
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.6, roadwayDesignScale: 0.6,
   },
   'Sidewalk Construction': {
     disciplines: ['Roadway', 'Survey'],
-    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.4,
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.4, roadwayDesignScale: 0.5,
   },
   'Accessibility Improvements': {
     disciplines: ['Roadway', 'Traffic'],
-    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.5,
+    baseline: 'signal', sizeMetric: 'intersections', intensityMult: 0.5, roadwayDesignScale: 0.3,
   },
   // ── Other ────────────────────────────────────────────────────────────────
   'Targeted Modernization - Multiple Locations': {
     disciplines: ['Roadway', 'Traffic', 'Survey'],
-    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.7,
+    baseline: 'modernization', sizeMetric: 'roadMiles', intensityMult: 0.7, roadwayDesignScale: 0.5,
   },
 }
 
@@ -192,12 +200,70 @@ const PHASE_BASELINE: Record<string, Record<string, number[]>> = {
 const DEFAULT_BASELINE = PHASE_BASELINE.reconstruction
 
 // ─── Task names per discipline (MassDOT WHE Form 1.3) ───────────────────────
+// Roadway management tasks — always present on every project type (FDR, DJW, PM, checklists)
+const ROADWAY_MGMT_TASKS: Record<string, string[]> = {
+  'Preliminary Design': [
+    'Project Initiation and Data Compilation',      // 101
+    'Preliminary Project Scoping',                   // 102
+    'Field Reconnaissance',                          // 106
+    'Evaluate Existing Conditions / Context',        // 201 FDR
+    'Conduct Safety Analysis',                       // 202 FDR
+    'Preferred Alternative',                         // 208 FDR
+    'Functional Design Report Preparation',          // 212 FDR
+    'Design Justification Workbook',                // 221-223 DJW
+  ],
+  '25% Design': [
+    'Meetings and Liaison',                          // 304
+    'Quality Control (QC) Review',                   // 322
+    'Submission Checklists',                         // 325
+  ],
+  '75% Design': [
+    'Meetings Liaison and Coordination',             // 403
+    'Constructability and Quality Control (QC) Reviews', // 425
+    'Submission Checklist',                          // 426
+  ],
+  '100% / PS&E': [
+    'Finalize Special Provisions',                   // 453
+    'Quality Control (QC) Review',                   // 456
+    'Submission Checklist',                          // 457
+    'Respond to 100% Comments and CRM',             // 462
+  ],
+}
+
+// Roadway design tasks — physical road design, scaled by roadwayDesignScale
+const ROADWAY_DESIGN_TASKS: Record<string, string[]> = {
+  'Preliminary Design': [
+    'Conceptual Design and Alternatives Analysis',   // 110
+  ],
+  '25% Design': [
+    'Preliminary Horizontal Geometry',               // 305
+    'Preliminary Vertical Geometry',                 // 306
+    'Pavement Design',                               // 310
+    'Typical Sections',                              // 311
+    'Preliminary Construction Cost Estimate',        // 323
+    '25% Contract Plans',                            // 324
+  ],
+  '75% Design': [
+    'Final Horizontal Design Geometrics',            // 405
+    'Final Vertical Design Geometrics',              // 406
+    'Construction Plans',                            // 411
+    'Grading and Tie Plans',                         // 412
+    'Quantity and Cost Estimate',                    // 423
+  ],
+  '100% / PS&E': [
+    'Finalize Plans',                                // 452
+    'Finalize Quantity and Cost Estimate',           // 455
+  ],
+}
+
 const TASK_MAP: Record<string, Record<string, string[]>> = {
+  // Roadway entry kept for non-Roadway disciplines that may reference it
+  // (actual Roadway tasks are built dynamically via ROADWAY_MGMT_TASKS + ROADWAY_DESIGN_TASKS)
   Roadway: {
-    'Preliminary Design': ['Project Initiation and Data Compilation', 'Conceptual Design and Alternatives Analysis', 'Field Reconnaissance'],
-    '25% Design':         ['Preliminary Horizontal Geometry', 'Preliminary Vertical Geometry', 'Pavement Design', 'Typical Sections', 'Quality Control (QC) Review'],
-    '75% Design':         ['Final Horizontal Design Geometrics', 'Final Vertical Design Geometrics', 'Construction Plans', 'Quantity and Cost Estimate', 'Constructability and Quality Control (QC) Reviews'],
-    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Finalize Quantity and Cost Estimate', 'Quality Control (QC) Review'],
+    'Preliminary Design': [...ROADWAY_MGMT_TASKS['Preliminary Design'], ...ROADWAY_DESIGN_TASKS['Preliminary Design']],
+    '25% Design':         [...ROADWAY_MGMT_TASKS['25% Design'],         ...ROADWAY_DESIGN_TASKS['25% Design']],
+    '75% Design':         [...ROADWAY_MGMT_TASKS['75% Design'],         ...ROADWAY_DESIGN_TASKS['75% Design']],
+    '100% / PS&E':        [...ROADWAY_MGMT_TASKS['100% / PS&E'],        ...ROADWAY_DESIGN_TASKS['100% / PS&E']],
   },
   Traffic: {
     'Preliminary Design': ['Intersection Control Evaluation', 'Road Safety Audit', 'Prepare Traffic Volumes'],
@@ -315,12 +381,59 @@ function applyScaling(
 }
 
 // ─── Rules-based estimate ─────────────────────────────────────────────────────
+function buildRolewayTasksForPhase(
+  phase: string,
+  roadwayDesignScale: number,
+  baseMult: number,
+  base: number[],
+  complexity: number, complexityMult: number, intensityMult: number, sizeFactor: number,
+  sf: SizeFactors, primaryMetric: string
+) {
+  const tasks: any[] = []
+
+  // Management tasks — always at full multiplier (not scaled by road miles)
+  const mgmtNames = ROADWAY_MGMT_TASKS[phase] ?? []
+  if (mgmtNames.length > 0) {
+    mgmtNames.forEach(taskName => {
+      const hrs = base.map(h => Math.max(0, Math.round((h * baseMult) / mgmtNames.length)))
+      const likely = hrs.reduce((s, v) => s + v, 0)
+      tasks.push({
+        phase, taskName,
+        hours: Object.fromEntries(STAFF.map((cat, i) => [cat, hrs[i] ?? 0])),
+        lowHours: Math.round(likely * 0.8), likelyHours: likely, highHours: Math.round(likely * 1.3),
+        rationale: `Roadway management / ${phase}: FDR/DJW/PM/checklists — all project types`,
+      })
+    })
+  }
+
+  // Design tasks — scaled by roadwayDesignScale × sizeFactor
+  if (roadwayDesignScale > 0) {
+    const designNames = ROADWAY_DESIGN_TASKS[phase] ?? []
+    if (designNames.length > 0) {
+      const designMult = baseMult * roadwayDesignScale * sizeFactor
+      designNames.forEach(taskName => {
+        const hrs = base.map(h => Math.max(0, Math.round((h * designMult) / designNames.length)))
+        const likely = hrs.reduce((s, v) => s + v, 0)
+        tasks.push({
+          phase, taskName,
+          hours: Object.fromEntries(STAFF.map((cat, i) => [cat, hrs[i] ?? 0])),
+          lowHours: Math.round(likely * 0.8), likelyHours: likely, highHours: Math.round(likely * 1.3),
+          rationale: buildRationale('Roadway (design)', phase, complexity, complexityMult, intensityMult * roadwayDesignScale, sizeFactor, sf, primaryMetric),
+        })
+      })
+    }
+  }
+
+  return tasks
+}
+
 function buildRulesEstimate(projectType: string, complexity: number, phases: string[], sf: SizeFactors) {
   const config = PROJECT_TYPES[projectType]
   const disciplines = config?.disciplines ?? ['Roadway', 'Traffic']
   const baselineKey = config?.baseline ?? 'reconstruction'
   const phaseBaselines = PHASE_BASELINE[baselineKey] ?? DEFAULT_BASELINE
   const intensityMult = config?.intensityMult ?? 1.0
+  const roadwayDesignScale = config?.roadwayDesignScale ?? 1.0
   const primaryMetric = config?.sizeMetric ?? 'roadMiles'
 
   // Complexity: 1=0.6x, 2=0.8x, 3=1.0x, 4=1.2x, 5=1.4x
@@ -329,18 +442,28 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
   const disciplineResults = disciplines.map((disc, dIdx) => {
     const primaryScale = dIdx === 0 ? 1 : 0.4
     const sizeFactor = disciplineSizeFactor(disc, sf, primaryMetric)
-    const finalMult = complexityMult * primaryScale * intensityMult * sizeFactor
+    const baseMult = complexityMult * primaryScale * intensityMult
 
     const tasks = phases.flatMap(phase => {
+      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12]
+
+      // Roadway discipline uses split management + design tasks
+      if (disc === 'Roadway') {
+        return buildRolewayTasksForPhase(
+          phase, roadwayDesignScale, baseMult, base,
+          complexity, complexityMult, intensityMult, sizeFactor, sf, primaryMetric
+        )
+      }
+
+      // All other disciplines use the standard task map
       const taskNames = TASK_MAP[disc]?.[phase]
       if (!taskNames) return []
-      const base = phaseBaselines[phase] ?? DEFAULT_BASELINE[phase] ?? [2, 4, 8, 16, 8, 12]
+      const finalMult = baseMult * sizeFactor
       return taskNames.map(taskName => {
         const hrs = base.map(h => Math.max(0, Math.round((h * finalMult) / taskNames.length)))
         const likely = hrs.reduce((s, v) => s + v, 0)
         return {
-          phase,
-          taskName,
+          phase, taskName,
           hours: Object.fromEntries(STAFF.map((cat, i) => [cat, hrs[i] ?? 0])),
           lowHours:    Math.round(likely * 0.8),
           likelyHours: likely,
@@ -452,14 +575,21 @@ BRIDGES: ${sf.bridges}
 INTERSECTIONS: ${sf.intersections}
 PHASES: ${phases.join(', ')}
 
-IMPORTANT — Size scaling rules you MUST apply:
-- Roadway/Survey/Drainage hours: baseline assumes 1 road mile. Scale proportionally for ${sf.roadMiles} miles.
-- Structural hours: baseline assumes 1 bridge. Multiply by ${sf.bridges} for ${sf.bridges} bridge(s).
-- Traffic/Signal hours: baseline assumes 2 intersections. Scale for ${sf.intersections} intersection(s).
-- If a metric is 0 or unspecified, use the baseline.
+CRITICAL — Roadway tasks are REQUIRED on ALL project types (including bridge, signal, drainage):
+- Every project needs Section 100 tasks: Project Initiation, Scoping, Field Reconnaissance
+- Every project needs Section 200 Functional Design Report (FDR): Existing Conditions, Safety Analysis, Preferred Alternative, Report Preparation
+- Every project needs Section 220 Design Justification Workbook (DJW): Controlling Criteria, Incremental Evaluation, Certify Workbook
+- Every project needs submission checklists, meetings/liaison, QC reviews
+- Physical road design (horizontal/vertical geometry, construction plans) ONLY for roadway-heavy projects
+  - For ${projectType}: roadway design scale = ${(config?.roadwayDesignScale ?? 1.0).toFixed(1)} (1.0=full design, 0.2=mgmt/FDR/DJW only)
+
+Size scaling rules:
+- Roadway DESIGN hours: baseline = 1 road mile → scale for ${sf.roadMiles} miles
+- Structural hours: 1 bridge baseline → multiply by ${sf.bridges}
+- Traffic/Signal hours: 2 intersections baseline → scale for ${sf.intersections}
 
 Staff: Principal In Charge (PIC), Project Manager (PM), Senior Engineer (SE), Engineer (Eng), Assistant Engineer (AE), Engineering Technician (ET)
-MassDOT sections: 100 (Prelim), 150 (Environmental), 300 (25%), 400 (75%), 450 (PS&E), 500 (ROW), 600 (Geotech), 700/710/750 (Structural)
+MassDOT sections: 100 (Prelim/PM), 150 (Environmental), 200 (FDR), 220 (DJW), 300 (25%), 400 (75%), 450 (PS&E), 500 (ROW), 600 (Geotech), 700/710/750 (Structural)
 
 Return ONLY valid JSON — no markdown:
 {
