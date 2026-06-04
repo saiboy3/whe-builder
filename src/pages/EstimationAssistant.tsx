@@ -75,8 +75,9 @@ export default function EstimationAssistant() {
         body: JSON.stringify(form),
       })
       if (!res.ok) {
-        const e = await res.json().catch(() => ({ error: 'Estimation failed' }))
-        throw new Error(e.error ?? 'Estimation failed')
+        const text = await res.text().catch(() => '')
+        const e = (() => { try { return JSON.parse(text) } catch { return null } })()
+        throw new Error(`[${res.status}] ${e?.error ?? text.slice(0, 200) || 'Estimation failed'}`)
       }
       const data = await res.json()
       setResult(data)

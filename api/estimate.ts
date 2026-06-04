@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import Anthropic from '@anthropic-ai/sdk'
-import { requireAuth, cors } from './_lib/auth'
+import { cors } from './_lib/auth'
 
 // Rules-based baseline hours per phase: [Principal, PM, Sr.Eng, Eng, Designer, CADD, Clerical]
 const BASELINE: Record<string, Record<string, number[]>> = {
@@ -133,9 +133,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
-
-  const user = requireAuth(req, res)
-  if (!user) return
 
   const {
     projectType = 'Roadway Reconstruction',
