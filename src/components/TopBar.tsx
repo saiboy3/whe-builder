@@ -1,11 +1,10 @@
 import { Bell, Search } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import type { UserRole } from '../types'
-
-const roles: UserRole[] = ['Engineer', 'PM', 'Principal']
+import { useAuth } from '../context/AuthContext'
 
 export default function TopBar() {
-  const { projects, selectedProjectId, setSelectedProjectId, currentRole, setCurrentRole } = useApp()
+  const { projects, selectedProjectId, setSelectedProjectId } = useApp()
+  const { user } = useAuth()
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center px-6 gap-4 flex-shrink-0">
@@ -29,13 +28,12 @@ export default function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-4">
-        <select
-          value={currentRole}
-          onChange={e => setCurrentRole(e.target.value as UserRole)}
-          className="text-sm border border-slate-300 rounded-md px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
-        >
-          {roles.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
+        {user && (
+          <span className="text-xs text-slate-500">
+            Signed in as <span className="font-semibold text-slate-700">{user.name}</span>
+            <span className="ml-1.5 px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 text-xs">{user.role}</span>
+          </span>
+        )}
 
         <button className="relative text-slate-500 hover:text-slate-800">
           <Bell size={19} />

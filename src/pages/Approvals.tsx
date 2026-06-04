@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, XCircle, Clock, ChevronRight, MessageSquare } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 
 const STAGES = ['Engineer', 'PM', 'Principal']
 
@@ -18,7 +19,9 @@ const stageIcon = {
 }
 
 export default function Approvals() {
-  const { projects, updateProject, currentRole } = useApp()
+  const { projects, updateProject } = useApp()
+  const { user } = useAuth()
+  const currentRole = user?.role === 'PRINCIPAL' ? 'Principal' : user?.role === 'PM' ? 'PM' : 'Engineer'
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
   const [comment, setComment] = useState('')
 

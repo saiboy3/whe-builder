@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ENGINEER
+  PM
+  PRINCIPAL
+  ADMIN
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  AWAITING_APPROVAL
+}
+
+enum RiskLevel {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum ApprovalStatus {
+  DRAFT
+  SUBMITTED
+  PM_APPROVED
+  PRINCIPAL_APPROVED
+  REJECTED
+}
+
+enum Phase {
+  PRELIMINARY_DESIGN
+  DESIGN_25
+  DESIGN_75
+  DESIGN_100_PSE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  role         Role
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projectsPM    Project[]     @relation("PMProjects")
+  approvals     ApprovalStep[]
+}
+
+model Project {
+  id                 String         @id @default(uuid())
+  contractNumber     String         @unique
+  name               String
+  description        String         @default("")
+  district           String
+  projectType        String
+  phase              Phase
+  status             ProjectStatus  @default(ACTIVE)
+  risk               RiskLevel      @default(GREEN)
+  approvalStatus     ApprovalStatus @default(DRAFT)
+  estimationComplete Int            @default(0)
+  pmId               String?
+  pm                 User?          @relation("PMProjects", fields: [pmId], references: [id])
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  wbsItems      WBSItem[]
+  approvalSteps ApprovalStep[]
+  exportLogs    ExportLog[]
+}
+
+model WBSTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items WBSTemplateItem[]
+}
+
+model WBSTemplateItem {
+  id         String      @id @default(uuid())
+  templateId String
+  template   WBSTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  phase      Phase
+  discipline String
+  taskName   String
+  sortOrder  Int         @default(0)
+
+  estimationFactors EstimationFactor[]
+}
+
+model WBSItem {
+  id         String  @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase      Phase
+  discipline String
+  taskName   String
+  sortOrder  Int     @default(0)
+  factor     Float   @default(1.0)
+  notes      String  @default("")
+
+  hourEntries HourEntry[]
+}
+
+model HourEntry {
+  id             String  @id @default(uuid())
+  wbsItemId      String
+  wbsItem        WBSItem @relation(fields: [wbsItemId], references: [id], onDelete: Cascade)
+  staffCategory  String
+  estimatedHours Float   @default(0)
+  adjustedHours  Float   @default(0)
+  actualHours    Float   @default(0)
+}
+
+model EstimationFactor {
+  id                String          @id @default(uuid())
+  wbsTemplateItemId String
+  templateItem      WBSTemplateItem @relation(fields: [wbsTemplateItemId], references: [id], onDelete: Cascade)
+  staffCategory     String
+  baseHours         Float
+  complexityLow     Float
+  complexityMid     Float
+  complexityHigh    Float
+}
+
+model HistoricalProjectMetric {
+  id             String   @id @default(uuid())
+  contractNumber String
+  projectName    String
+  projectType    String
+  district       String
+  discipline     String
+  phase          Phase
+  taskName       String
+  staffCategory  String
+  estimatedHours Float
+  actualHours    Float
+  variance       Float
+  completedAt    DateTime
+  createdAt      DateTime @default(now())
+}
+
+model ApprovalStep {
+  id        String         @id @default(uuid())
+  projectId String
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id])
+  stage     String
+  status    ApprovalStatus @default(DRAFT)
+  comments  String         @default("")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model ExportLog {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  format      String
+  version     Int
+  downloadUrl String   @default("")
+  createdAt   DateTime @default(now())
+}
