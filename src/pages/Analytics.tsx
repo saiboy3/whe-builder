@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Minus, BarChart3, GitCommitHorizontal, Upload } from 'lucide-react'
+import { TrendingUp, BarChart3, GitCommitHorizontal, Upload } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useNavigate } from 'react-router-dom'
 
