@@ -48,7 +48,6 @@ const STAFF = [
   'Engineer (Eng)',
   'Assistant Engineer (AE)',
   'Engineering Technician (ET)',
-  'Administrative (Admin)',
 ]
 
 const DISCIPLINE_MAP: Record<string, string[]> = {

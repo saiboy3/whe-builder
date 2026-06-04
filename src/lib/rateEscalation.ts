@@ -23,7 +23,6 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
     'Engineer (Eng)':            130,
     'Assistant Engineer (AE)':   110,
     'Engineering Technician (ET)': 95,
-    'Administrative (Admin)':     75,
   },
   directSalaryRates: {
     'Principal In Charge (PIC)': 110,
@@ -32,7 +31,6 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
     'Engineer (Eng)':             60,
     'Assistant Engineer (AE)':    52,
     'Engineering Technician (ET)': 45,
-    'Administrative (Admin)':      35,
   },
   designMonths: 24,
   constructionMonths: 18,
@@ -83,5 +81,4 @@ export const MASSDOT_TITLE_MAP: Record<string, string> = {
   'Engineer (Eng)':               'Engineer (Eng)',
   'Assistant Engineer (AE)':      'Assistant Engineer (AE)',
   'Engineering Technician (ET)':  'Engineering Technician (ET)',
-  'Administrative (Admin)':       'Administrative (Admin)',
 }

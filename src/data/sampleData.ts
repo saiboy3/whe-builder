@@ -8,7 +8,6 @@ const makeHours = (vals: number[]) => ({
   'Engineer (Eng)': vals[3] ?? 0,
   'Assistant Engineer (AE)': vals[4] ?? 0,
   'Engineering Technician (ET)': vals[5] ?? 0,
-  'Administrative (Admin)': vals[6] ?? 0,
 })
 
 const task = (

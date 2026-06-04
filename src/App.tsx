@@ -8,13 +8,9 @@ import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import EstimationBuilder from './pages/EstimationBuilder'
 import EstimationAssistant from './pages/EstimationAssistant'
-import Templates from './pages/Templates'
-import Historical from './pages/Historical'
+import Analytics from './pages/Analytics'
 import Approvals from './pages/Approvals'
-import ExportCenter from './pages/ExportCenter'
-import Reports from './pages/Reports'
-import ImportData from './pages/ImportData'
-import RateConfig from './pages/RateConfig'
+import Settings from './pages/Settings'
 
 function AppShell() {
   const { user, isLoading } = useAuth()
@@ -37,18 +33,21 @@ function AppShell() {
           <TopBar />
           <main className="flex-1 overflow-auto">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/projects" element={<Projects />} />
+              <Route path="/"           element={<Dashboard />} />
+              <Route path="/projects"   element={<Projects />} />
               <Route path="/estimation" element={<EstimationBuilder />} />
-              <Route path="/assistant" element={<EstimationAssistant />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/history" element={<Historical />} />
-              <Route path="/approvals" element={<Approvals />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/export" element={<ExportCenter />} />
-              <Route path="/import" element={<ImportData />} />
-              <Route path="/rates" element={<RateConfig />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/assistant"  element={<EstimationAssistant />} />
+              <Route path="/analytics"  element={<Analytics />} />
+              <Route path="/approvals"  element={<Approvals />} />
+              <Route path="/settings"   element={<Settings />} />
+              {/* Legacy redirects */}
+              <Route path="/history"    element={<Navigate to="/analytics" replace />} />
+              <Route path="/reports"    element={<Navigate to="/analytics" replace />} />
+              <Route path="/export"     element={<Navigate to="/estimation" replace />} />
+              <Route path="/templates"  element={<Navigate to="/settings?tab=templates" replace />} />
+              <Route path="/import"     element={<Navigate to="/settings?tab=import" replace />} />
+              <Route path="/rates"      element={<Navigate to="/settings?tab=rates" replace />} />
+              <Route path="*"           element={<Navigate to="/" replace />} />
             </Routes>
           </main>
         </div>

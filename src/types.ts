@@ -27,7 +27,6 @@ export type StaffCategory =
   | 'Engineer (Eng)'
   | 'Assistant Engineer (AE)'
   | 'Engineering Technician (ET)'
-  | 'Administrative (Admin)'
 
 export interface HourEntry {
   [key: string]: number // staffCategory -> hours
@@ -72,7 +71,6 @@ export const STAFF_CATEGORIES: StaffCategory[] = [
   'Engineer (Eng)',
   'Assistant Engineer (AE)',
   'Engineering Technician (ET)',
-  'Administrative (Admin)',
 ]
 
 export const PHASES: Phase[] = [
@@ -101,7 +99,6 @@ export const DEFAULT_RATES: RateTable = {
   'Engineer (Eng)': 130,
   'Assistant Engineer (AE)': 110,
   'Engineering Technician (ET)': 95,
-  'Administrative (Admin)': 75,
 }
 
 export const OVERHEAD_MULTIPLIER = 1.85

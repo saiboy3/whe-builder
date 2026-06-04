@@ -304,7 +304,6 @@ export const STAFF_LABEL_MAP: Record<string, string> = {
   'Engineer (Eng)':               'Eng',
   'Assistant Engineer (AE)':      'AE',
   'Engineering Technician (ET)':  'ET',
-  'Administrative (Admin)':       'Admin',
 }
 
 export function getTaskNumber(phase: string, discipline: string, taskName: string): string {

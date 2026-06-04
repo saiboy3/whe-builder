@@ -15,7 +15,6 @@ const WHE_COL_MAP: Record<number, string> = {
   7: 'Engineer (Eng)',
   8: 'Assistant Engineer (AE)',
   9: 'Engineering Technician (ET)',
-  10: 'Administrative (Admin)',
 }
 
 
@@ -165,7 +164,7 @@ function parseCSV(text: string): Partial<HistoricalRecord>[] {
 }
 
 // Short keys for CSV columns (PIC, PM, SE, Eng, AE, ET, Admin)
-const CSV_KEYS = ['PIC', 'PM', 'SE', 'Eng', 'AE', 'ET', 'Admin']
+const CSV_KEYS = ['PIC', 'PM', 'SE', 'Eng', 'AE', 'ET']
 
 function generateCSVTemplate(): string {
   const staffEst = CSV_KEYS.map(k => `est_${k}`).join(',')
