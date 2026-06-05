@@ -413,38 +413,51 @@ export default function EstimationAssistant() {
                         </div>
 
                         {isOpen && (
-                          <div className="border-t border-slate-100">
-                            <table className="w-full text-xs">
+                          <div className="border-t border-slate-100 overflow-x-auto">
+                            <table className="w-full text-xs table-fixed">
+                              {/* Fixed column widths — same on every section so columns align */}
+                              <colgroup>
+                                <col style={{ width: '52px' }} />   {/* Task # */}
+                                <col style={{ width: '220px' }} />  {/* Task Name */}
+                                <col style={{ width: '120px' }} />  {/* Discipline */}
+                                {STAFF_CATEGORIES.map(c => <col key={c} style={{ width: '46px' }} />)}
+                                <col style={{ width: '48px' }} />   {/* Low */}
+                                <col style={{ width: '56px' }} />   {/* Likely */}
+                                <col style={{ width: '48px' }} />   {/* High */}
+                              </colgroup>
                               <thead>
-                                <tr className="bg-slate-50 text-slate-500 font-semibold">
-                                  <th className="px-3 py-2 text-center w-14">Task #</th>
-                                  <th className="px-4 py-2 text-left">Task Name</th>
-                                  <th className="px-3 py-2 text-left text-slate-400">Discipline</th>
+                                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                                  <th className="px-2 py-2 text-center">Task #</th>
+                                  <th className="px-3 py-2 text-left">Task Name</th>
+                                  <th className="px-2 py-2 text-left">Discipline</th>
                                   {STAFF_CATEGORIES.map(c => (
-                                    <th key={c} className="px-2 py-2 text-center min-w-[44px]">{c.split(' ').pop()?.replace('(PIC)', '').replace('(PM)', '').replace('(SE)', '').replace('(Eng)', '').replace('(AE)', '').replace('(ET)', '').trim()}</th>
+                                    <th key={c} className="px-1 py-2 text-center">
+                                      {/* Abbreviation: extract just the 2–3 char code */}
+                                      {c.match(/\(([^)]+)\)/)?.[1] ?? c.split(' ')[0]}
+                                    </th>
                                   ))}
-                                  <th className="px-2 py-2 text-center">Low</th>
-                                  <th className="px-2 py-2 text-center font-bold text-purple-700">Likely</th>
-                                  <th className="px-2 py-2 text-center">High</th>
+                                  <th className="px-1 py-2 text-center">Low</th>
+                                  <th className="px-1 py-2 text-center text-purple-700 font-bold">Likely</th>
+                                  <th className="px-1 py-2 text-center">High</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-50">
+                              <tbody className="divide-y divide-slate-100">
                                 {secTasks.map((task, i) => (
                                   <tr key={i} className={`hover:bg-purple-50 group ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                    <td className="px-3 py-1.5 text-center font-mono font-bold text-amber-700">{task.taskNum}</td>
-                                    <td className="px-4 py-1.5">
-                                      <div className="font-medium text-slate-700">{task.taskName}</div>
+                                    <td className="px-2 py-1.5 text-center font-mono font-bold text-amber-700">{task.taskNum}</td>
+                                    <td className="px-3 py-1.5 truncate">
+                                      <div className="font-medium text-slate-700 truncate" title={task.taskName}>{task.taskName}</div>
                                       {task.rationale && (
-                                        <div className="text-slate-400 italic text-xs mt-0.5 hidden group-hover:block">{task.rationale}</div>
+                                        <div className="text-slate-400 italic text-xs mt-0.5 hidden group-hover:block truncate">{task.rationale}</div>
                                       )}
                                     </td>
-                                    <td className="px-3 py-1.5 text-slate-400">{task.discipline}</td>
+                                    <td className="px-2 py-1.5 text-slate-400 truncate" title={task.discipline}>{task.discipline}</td>
                                     {STAFF_CATEGORIES.map(cat => (
-                                      <td key={cat} className="px-2 py-1.5 text-center text-slate-600">{task.hours[cat] || 0}</td>
+                                      <td key={cat} className="px-1 py-1.5 text-center text-slate-700">{task.hours[cat] || 0}</td>
                                     ))}
-                                    <td className="px-2 py-1.5 text-center text-slate-400">{task.lowHours}</td>
-                                    <td className="px-2 py-1.5 text-center font-bold text-purple-700">{task.likelyHours}</td>
-                                    <td className="px-2 py-1.5 text-center text-slate-400">{task.highHours}</td>
+                                    <td className="px-1 py-1.5 text-center text-slate-400">{task.lowHours}</td>
+                                    <td className="px-1 py-1.5 text-center font-bold text-purple-700">{task.likelyHours}</td>
+                                    <td className="px-1 py-1.5 text-center text-slate-400">{task.highHours}</td>
                                   </tr>
                                 ))}
                               </tbody>
