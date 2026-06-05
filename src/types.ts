@@ -7,7 +7,8 @@ export type Phase =
   | 'Preliminary Design'
   | '25% Design'
   | '75% Design'
-  | '100% / PS&E'
+  | '100% Design'
+  | 'PS&E'
 
 export type Discipline =
   | 'Roadway'
@@ -77,7 +78,8 @@ export const PHASES: Phase[] = [
   'Preliminary Design',
   '25% Design',
   '75% Design',
-  '100% / PS&E',
+  '100% Design',
+  'PS&E',
 ]
 
 export const DISCIPLINES: Discipline[] = [

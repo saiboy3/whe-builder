@@ -157,43 +157,50 @@ const PHASE_BASELINE: Record<string, Record<string, number[]>> = {
     'Preliminary Design': [4, 8, 20, 32, 8, 8],
     '25% Design':         [4, 12, 32, 64, 32, 48],
     '75% Design':         [6, 16, 48, 96, 56, 80],
-    '100% / PS&E':        [8, 16, 32, 48, 24, 48],
+    '100% Design':        [8, 16, 32, 48, 24, 48],
+    'PS&E':               [4, 8, 12, 16, 8, 12],
   },
   bridge: {
     'Preliminary Design': [4, 8, 32, 48, 8, 0],
     '25% Design':         [4, 12, 48, 80, 24, 40],
     '75% Design':         [6, 16, 64, 120, 40, 64],
-    '100% / PS&E':        [8, 16, 40, 64, 24, 48],
+    '100% Design':        [8, 16, 40, 64, 24, 48],
+    'PS&E':               [4, 8, 12, 16, 8, 12],
   },
   intersection: {
     'Preliminary Design': [2, 6, 16, 24, 4, 4],
     '25% Design':         [2, 8, 20, 40, 16, 24],
     '75% Design':         [4, 10, 28, 56, 24, 40],
-    '100% / PS&E':        [4, 10, 20, 32, 16, 32],
+    '100% Design':        [4, 10, 20, 32, 16, 32],
+    'PS&E':               [2, 6, 8, 12, 4, 8],
   },
   signal: {
     'Preliminary Design': [1, 4, 10, 16, 4, 0],
     '25% Design':         [1, 4, 12, 24, 8, 8],
     '75% Design':         [2, 6, 16, 32, 12, 16],
-    '100% / PS&E':        [2, 6, 12, 20, 8, 16],
+    '100% Design':        [2, 6, 12, 20, 8, 16],
+    'PS&E':               [1, 4, 6, 8, 4, 6],
   },
   pavement: {
     'Preliminary Design': [1, 4, 8, 16, 4, 0],
     '25% Design':         [1, 4, 12, 24, 8, 16],
     '75% Design':         [2, 6, 16, 32, 16, 32],
-    '100% / PS&E':        [2, 6, 12, 20, 8, 24],
+    '100% Design':        [2, 6, 12, 20, 8, 24],
+    'PS&E':               [1, 4, 6, 8, 4, 8],
   },
   drainage: {
     'Preliminary Design': [2, 6, 16, 28, 4, 4],
     '25% Design':         [2, 8, 24, 48, 16, 24],
     '75% Design':         [4, 10, 32, 64, 24, 40],
-    '100% / PS&E':        [4, 8, 20, 32, 12, 24],
+    '100% Design':        [4, 8, 20, 32, 12, 24],
+    'PS&E':               [2, 6, 8, 12, 4, 8],
   },
   modernization: {
     'Preliminary Design': [2, 6, 14, 22, 6, 6],
     '25% Design':         [2, 8, 20, 40, 18, 28],
     '75% Design':         [4, 10, 30, 60, 32, 50],
-    '100% / PS&E':        [4, 10, 20, 32, 16, 32],
+    '100% Design':        [4, 10, 20, 32, 16, 32],
+    'PS&E':               [2, 6, 8, 12, 4, 8],
   },
 }
 
@@ -224,11 +231,17 @@ const ROADWAY_MGMT_TASKS: Record<string, string[]> = {
     'Submission Checklist',                               // 426
     'Respond to 75% Comments and CRM',                   // 431 — MassDOT review response + CRM
   ],
-  '100% / PS&E': [
+  '100% Design': [
     'Finalize Special Provisions',                        // 453
     'Quality Control (QC) Review',                        // 456 — includes addressing final QC comments
     'Submission Checklist',                               // 457
     'Respond to 100% Comments and CRM',                  // 462 — MassDOT review response + CRM
+  ],
+  'PS&E': [
+    'Compile PS&E Package',                               // 801
+    'Final PS&E Review and Sign-offs',                    // 802
+    'Submit PS&E to MassDOT',                            // 803
+    'Address Final Comments',                             // 804
   ],
 }
 
@@ -273,43 +286,49 @@ const ROADWAY_DESIGN_TASKS: Record<string, string[]> = {
     'Grading and Tie Plans',                         // 412
     'Quantity and Cost Estimate',                    // 423
   ],
-  '100% / PS&E': [
+  '100% Design': [
     'Finalize Plans',                                // 452
     'Finalize Quantity and Cost Estimate',           // 455
+  ],
+  'PS&E': [
+    'Compile PS&E Package',                          // 801
+    'Submit PS&E to MassDOT',                       // 803
   ],
 }
 
 const TASK_MAP: Record<string, Record<string, string[]>> = {
-  // Roadway entry kept for non-Roadway disciplines that may reference it
-  // (actual Roadway tasks are built dynamically via ROADWAY_MGMT_TASKS + ROADWAY_DESIGN_TASKS)
   Roadway: {
     'Preliminary Design': [...ROADWAY_MGMT_TASKS['Preliminary Design'], ...ROADWAY_DESIGN_TASKS['Preliminary Design']],
     '25% Design':         [...ROADWAY_MGMT_TASKS['25% Design'],         ...ROADWAY_DESIGN_TASKS['25% Design']],
     '75% Design':         [...ROADWAY_MGMT_TASKS['75% Design'],         ...ROADWAY_DESIGN_TASKS['75% Design']],
-    '100% / PS&E':        [...ROADWAY_MGMT_TASKS['100% / PS&E'],        ...ROADWAY_DESIGN_TASKS['100% / PS&E']],
+    '100% Design':        [...ROADWAY_MGMT_TASKS['100% Design'],        ...ROADWAY_DESIGN_TASKS['100% Design']],
+    'PS&E':               [...(ROADWAY_MGMT_TASKS['PS&E'] ?? []),       ...(ROADWAY_DESIGN_TASKS['PS&E'] ?? [])],
   },
   Traffic: {
     'Preliminary Design': ['Intersection Control Evaluation', 'Road Safety Audit', 'Prepare Traffic Volumes'],
     '25% Design':         ['Lane Configurations', 'Traffic Signals', 'Signs and Pavement Markings'],
     '75% Design':         ['Traffic Signals and Plan Preparation', 'Pavement Markings and Plan Preparation', 'Traffic Management Plans and Details'],
-    '100% / PS&E':        ['Finalize Plans', 'Traffic Control Agreement Submission'],
+    '100% Design':        ['Finalize Plans', 'Traffic Control Agreement Submission'],
+    'PS&E':               ['Compile PS&E Package', 'Final PS&E Review and Sign-offs'],
   },
   Structures: {
     'Preliminary Design': ['Field Investigation', 'Preliminary Structural Analysis', 'Preliminary Structures Report Preparation'],
     '25% Design':         ['Sketch Plan Development', 'Establish Boring Locations'],
     '75% Design':         ['Structural Design - Superstructure', 'Structural Design - Substructure', 'Contract Drawings', 'Constructability and Quality Control (QC) Review'],
-    '100% / PS&E':        ['Finalize Plans', 'Finalize Special Provisions', 'Quality Control (QC) Review'],
+    '100% Design':        ['Finalize Plans', 'Finalize Special Provisions', 'Quality Control (QC) Review'],
+    'PS&E':               ['Compile PS&E Package'],
   },
   'Hydraulics/Drainage': {
     'Preliminary Design': ['Hydraulics Study and Report'],
     '25% Design':         ['Hydrological Studies and Hydraulics Report', 'Preliminary Drainage Studies'],
     '75% Design':         ['Drainage and Water Supply Plans'],
-    '100% / PS&E':        ['Finalize Plans'],
+    '100% Design':        ['Finalize Plans'],
+    'PS&E':               ['Compile PS&E Package'],
   },
   Utilities: {
     '25% Design':         ['Utility Coordination', 'Subsurface Utility Exploration (SUE)', 'Preliminary Utility Design'],
     '75% Design':         ['Utility Coordination'],
-    '100% / PS&E':        ['Finalize Plans'],
+    '100% Design':        ['Finalize Plans'],
   },
   Environmental: {
     'Preliminary Design': ['Early Environmental Review Checklist', 'Hazardous Materials Research/Review', 'NEPA/MEPA Determination'],
@@ -323,7 +342,8 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
   },
   'Right-of-Way': {
     '75% Design':   ['Preliminary Right of Way Plans', 'Layout Plans and Order of Taking', 'Quality Control (QC) Review'],
-    '100% / PS&E':  ['Layout Plans and Order of Taking', 'Written Instrument', 'Quality Control (QC) Review'],
+    '100% Design':  ['Layout Plans and Order of Taking', 'Written Instrument', 'Quality Control (QC) Review'],
+    'PS&E':         ['Submit PS&E to MassDOT'],
   },
 }
 
@@ -594,7 +614,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     roadMiles    = 0,
     bridges      = 0,
     intersections = 0,
-    phases       = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E'],
+    phases       = ['Preliminary Design', '25% Design', '75% Design', '100% Design', 'PS&E'],
   } = req.body ?? {}
 
   const sf: SizeFactors = {

@@ -61,11 +61,14 @@ export const SAMPLE_PROJECTS: Project[] = [
       task('t11', '75% Design', 'Utilities', 'Utility Coordination', [1, 8, 16, 24, 0, 0, 4]),
       task('t12', '75% Design', 'Traffic', 'Traffic Signals and Plan Preparation', [2, 6, 20, 32, 16, 24, 2]),
       task('t13', '75% Design', 'Hydraulics/Drainage', 'Drainage and Water Supply Plans', [1, 4, 16, 24, 8, 16, 2]),
+      // Section 450 — 100% Design
+      task('t14', '100% Design', 'Roadway', 'Finalize Plans', [4, 8, 24, 40, 32, 64, 8]),
+      task('t15', '100% Design', 'Roadway', 'Finalize Special Provisions', [2, 4, 16, 24, 0, 0, 8]),
+      task('t16', '100% Design', 'Roadway', 'Quality Control (QC) Review', [8, 12, 24, 16, 0, 0, 4]),
       // Section 450 — PS&E
-      task('t14', '100% / PS&E', 'Roadway', 'Finalize Plans', [4, 8, 24, 40, 32, 64, 8]),
-      task('t15', '100% / PS&E', 'Roadway', 'Finalize Special Provisions', [2, 4, 16, 24, 0, 0, 8]),
-      task('t16', '100% / PS&E', 'Roadway', 'Finalize Quantity and Cost Estimate', [2, 4, 16, 20, 0, 0, 4]),
-      task('t17', '100% / PS&E', 'Roadway', 'Quality Control (QC) Review', [8, 12, 24, 16, 0, 0, 4]),
+      task('t17', 'PS&E', 'Roadway', 'Finalize Quantity and Cost Estimate', [2, 4, 16, 20, 0, 0, 4]),
+      task('t17b', 'PS&E', 'Roadway', 'Submission Checklist', [2, 4, 8, 12, 4, 4, 8]),
+      task('t17c', 'PS&E', 'Roadway', 'Respond to 100% Comments and CRM', [2, 6, 12, 20, 8, 0, 4]),
     ],
   },
   {
@@ -117,9 +120,9 @@ export const SAMPLE_PROJECTS: Project[] = [
       task('t29', '25% Design', 'Traffic', 'Lane Configurations', [1, 4, 16, 24, 12, 24, 2]),
       task('t30', '25% Design', 'Roadway', 'Pavement Design', [1, 4, 12, 20, 8, 16, 2]),
       // Section 450 — PS&E
-      task('t31', '100% / PS&E', 'Traffic', 'Traffic Control Agreement Submission', [2, 4, 16, 24, 16, 32, 4]),
-      task('t32', '100% / PS&E', 'Roadway', 'Finalize Plans', [2, 4, 12, 20, 8, 16, 8]),
-      task('t33', '100% / PS&E', 'Roadway', 'Quality Control (QC) Review', [6, 8, 16, 8, 0, 0, 2]),
+      task('t31', '100% Design', 'Traffic', 'Traffic Control Agreement Submission', [2, 4, 16, 24, 16, 32, 4]),
+      task('t32', '100% Design', 'Roadway', 'Finalize Plans', [2, 4, 12, 20, 8, 16, 8]),
+      task('t33', '100% Design', 'Roadway', 'Quality Control (QC) Review', [6, 8, 16, 8, 0, 0, 2]),
     ],
   },
 ]

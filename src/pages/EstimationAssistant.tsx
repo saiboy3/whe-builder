@@ -56,7 +56,7 @@ const PRIMARY_METRIC: Record<string, 'roadMiles' | 'bridges' | 'intersections'> 
   'Accessibility Improvements': 'intersections',
 }
 const DISTRICTS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6']
-const PHASES_LIST = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E']
+const PHASES_LIST = ['Preliminary Design', '25% Design', '75% Design', '100% Design', 'PS&E']
 
 interface EstimateResult {
   summary: string
@@ -92,7 +92,7 @@ export default function EstimationAssistant() {
     roadMiles: '',
     bridges: '',
     intersections: '',
-    phases: ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E'] as string[],
+    phases: ['Preliminary Design', '25% Design', '75% Design', '100% Design', 'PS&E'] as string[],
   })
 
   const [result, setResult] = useState<EstimateResult | null>(null)
@@ -131,7 +131,8 @@ export default function EstimationAssistant() {
       }
       const data = await res.json()
       setResult(data)
-      setExpanded(new Set(data.disciplines.map((d: any) => d.discipline)))
+      // Expand all sections by default
+      setExpanded(new Set(SECTIONS.map(s => `sec-${s.number}`)))
     } catch (err: any) {
       setError(err.message)
     } finally {

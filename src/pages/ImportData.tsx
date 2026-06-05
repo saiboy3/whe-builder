@@ -21,22 +21,21 @@ const WHE_COL_MAP: Record<number, string> = {
 function taskToPhase(taskNum: number): string {
   const prefix = String(taskNum).slice(0, 2)
   const first = String(taskNum).slice(0, 1)
-  if (['45', '80'].includes(prefix)) return '100% / PS&E'
+  if (['45', '50'].includes(prefix)) return '100% Design'
+  if (first === '8' || prefix === '80') return 'PS&E'
   if (['35'].includes(prefix)) return '25% Design'
   if (['40', '41', '42', '43', '44'].includes(prefix)) return '75% Design'
   if (['30', '31', '32', '33', '34'].includes(prefix)) return '25% Design'
   if (['10', '11', '12', '13', '15', '70', '71'].includes(prefix)) return 'Preliminary Design'
   if (['20', '21', '22', '23'].includes(prefix)) return 'Preliminary Design'
-  if (['50'].includes(prefix)) return '100% / PS&E'
   if (['60', '75', '76'].includes(prefix)) return '75% Design'
   if (first === '1') return 'Preliminary Design'
   if (first === '2') return 'Preliminary Design'
   if (first === '3') return '25% Design'
   if (first === '4') return '75% Design'
-  if (first === '5') return '100% / PS&E'
+  if (first === '5') return '100% Design'
   if (first === '6') return '75% Design'
   if (first === '7') return 'Preliminary Design'
-  if (first === '8') return '100% / PS&E'
   return 'Preliminary Design'
 }
 
@@ -259,7 +258,7 @@ export default function ImportData() {
     URL.revokeObjectURL(url)
   }
 
-  const PHASES = ['Preliminary Design', '25% Design', '75% Design', '100% / PS&E']
+  const PHASES = ['Preliminary Design', '25% Design', '75% Design', '100% Design', 'PS&E']
   const DISCIPLINES = ['Roadway', 'Traffic', 'Structures', 'Hydraulics/Drainage', 'Utilities', 'Environmental', 'Survey', 'Right-of-Way', 'Construction Support']
   const TYPES = ['Roadway Reconstruction', 'Bridge Rehabilitation', 'Intersection Safety', 'Drainage Improvement', 'Corridor Study', 'Resurfacing', 'Signal Upgrade']
 

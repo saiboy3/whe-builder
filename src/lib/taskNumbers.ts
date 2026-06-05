@@ -271,49 +271,84 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
     },
   },
 
-  // ── 100% / PS&E ─────────────────────────────────────────────────────────
-  '100% / PS&E / Roadway': {
+  // ── 100% DESIGN ─────────────────────────────────────────────────────────
+  '100% Design / Roadway': {
     section: 'SECTION 450 — 100% Highway Design Submission',
     tasks: {
       'Finalize Plans':                                 452,
       'Finalize Special Provisions':                    453,
       'Prepare Detail Sheets':                          454,
-      'Finalize Quantity and Cost Estimate':            455,
       'Quality Control (QC) Review':                    456,
       'Submission Checklist':                           457,
-      'Construction Contract Time Determination':       459,
-      'Respond to 100% Comments and CRM':              462,
     },
   },
-  '100% / PS&E / Traffic': {
+  '100% Design / Traffic': {
     section: 'SECTION 450 — 100% Highway Design Submission',
     tasks: {
       'Finalize Plans':                                 452,
-      'Traffic Control Agreement Submission':           461,
+      'Quality Control (QC) Review':                    456,
     },
   },
-  '100% / PS&E / Structures': {
+  '100% Design / Structures': {
     section: 'SECTION 450 — 100% Highway Design Submission',
     tasks: {
       'Finalize Plans':                                 452,
       'Finalize Special Provisions':                    453,
-      'Finalize Quantity and Cost Estimate':            455,
       'Quality Control (QC) Review':                    456,
     },
   },
-  '100% / PS&E / Hydraulics/Drainage': {
+  '100% Design / Hydraulics/Drainage': {
     section: 'SECTION 450 — 100% Highway Design Submission',
     tasks: {
       'Finalize Plans':                                 452,
     },
   },
-  '100% / PS&E / Right-of-Way': {
+  '100% Design / Right-of-Way': {
     section: 'SECTION 500 — Right of Way',
     tasks: {
       'Layout Plans and Order of Taking':               502,
       'Written Instrument':                             503,
       'Quality Control (QC) Review':                    504,
     },
+  },
+
+  // ── PS&E (Section 800) ───────────────────────────────────────────────────
+  'PS&E / Roadway': {
+    section: 'SECTION 800 — PS&E Submission',
+    tasks: {
+      'Compile PS&E Package':                           801,
+      'Final PS&E Review and Sign-offs':               802,
+      'Submit PS&E to MassDOT':                        803,
+      'Address Final Comments':                         804,
+      'Final PS&E Quality Control (QC) Review':        805,
+      'Bottom Up Estimate and Reconciliation':         806,
+      'Construction Contract Time Determination':       807,
+      'Incentives/Disincentives':                       808,
+    },
+  },
+  'PS&E / Traffic': {
+    section: 'SECTION 800 — PS&E Submission',
+    tasks: {
+      'Compile PS&E Package':                           801,
+      'Final PS&E Review and Sign-offs':               802,
+      'Submit PS&E to MassDOT':                        803,
+    },
+  },
+  'PS&E / Structures': {
+    section: 'SECTION 800 — PS&E Submission',
+    tasks: {
+      'Compile PS&E Package':                           801,
+      'Submit PS&E to MassDOT':                        803,
+      'Address Final Comments':                         804,
+    },
+  },
+  'PS&E / Hydraulics/Drainage': {
+    section: 'SECTION 800 — PS&E Submission',
+    tasks: { 'Compile PS&E Package': 801 },
+  },
+  'PS&E / Right-of-Way': {
+    section: 'SECTION 800 — PS&E Submission',
+    tasks: { 'Submit PS&E to MassDOT': 803 },
   },
 }
 
