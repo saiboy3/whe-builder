@@ -361,7 +361,7 @@ export default function EstimationAssistant() {
 
               {/* Results grouped by MassDOT Section — same structure as WBS Builder */}
               {(() => {
-                // Flatten all tasks from all disciplines, assign task numbers, group by section
+                // Flatten all tasks from all disciplines, assign task numbers
                 const allTasks = result.disciplines.flatMap(disc =>
                   disc.tasks.map(t => ({
                     ...t,
@@ -369,16 +369,35 @@ export default function EstimationAssistant() {
                     taskNum: getTaskNumber(t.phase, disc.discipline, t.taskName),
                   }))
                 )
-                // Group by section
-                const sectionMap = new Map<string, typeof allTasks>()
+
+                // Merge tasks with the same task number — in WHE form each task # is ONE row.
+                // Hours from different disciplines are summed into a single entry.
+                type FlatTask = typeof allTasks[0]
+                const merged = new Map<string, FlatTask & { hours: Record<string, number> }>()
                 for (const t of allTasks) {
+                  if (merged.has(t.taskNum)) {
+                    const ex = merged.get(t.taskNum)!
+                    for (const cat of Object.keys(t.hours)) {
+                      ex.hours[cat] = (ex.hours[cat] ?? 0) + (t.hours[cat] ?? 0)
+                    }
+                    ex.likelyHours += t.likelyHours
+                    ex.lowHours    += t.lowHours
+                    ex.highHours   += t.highHours
+                  } else {
+                    merged.set(t.taskNum, { ...t, hours: { ...t.hours } })
+                  }
+                }
+
+                // Group merged tasks by section
+                const sectionMap = new Map<string, FlatTask[]>()
+                for (const t of merged.values()) {
                   const sec = getSectionForTask(t.taskNum)
                   if (!sectionMap.has(sec.number)) sectionMap.set(sec.number, [])
-                  sectionMap.get(sec.number)!.push(t)
+                  sectionMap.get(sec.number)!.push(t as FlatTask)
                 }
                 // Sort within each section by task number
                 for (const tasks of sectionMap.values()) {
-                  tasks.sort((a, b) => parseInt(a.taskNum, 10) - parseInt(b.taskNum, 10))
+                  tasks.sort((a, b) => parseInt((a as any).taskNum, 10) - parseInt((b as any).taskNum, 10))
                 }
                 // Render in WHE form section order
                 return SECTIONS
