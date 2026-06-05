@@ -1,9 +1,51 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
-import { STAFF_CATEGORIES, PHASES } from '../types'
+import { STAFF_CATEGORIES } from '../types'
 import { getTaskNumber, STAFF_LABEL_MAP } from '../lib/taskNumbers'
+
+// MassDOT WHE Form 1.3 — Section structure in display order
+interface SectionInfo { number: string; name: string }
+const SECTIONS: SectionInfo[] = [
+  { number: '100', name: 'Project Development Engineering' },
+  { number: '150', name: 'Environmental' },
+  { number: '200', name: 'Functional Design Report' },
+  { number: '220', name: 'Design Justification Workbook' },
+  { number: '230', name: 'Interchange Justification/Modification Report (IJR/IMR)' },
+  { number: '300', name: '25% Highway Design Submission' },
+  { number: '350', name: 'Design Public Hearing' },
+  { number: '400', name: '75% Highway Design Submission' },
+  { number: '450', name: '100% Highway Design Submission' },
+  { number: '500', name: 'Right of Way' },
+  { number: '600', name: 'Geotechnical Design' },
+  { number: '700', name: 'Project Development – Structural' },
+  { number: '710', name: 'Sketch Plans' },
+  { number: '750', name: 'Final Bridge Design' },
+  { number: '800', name: 'PS&E Submission' },
+  { number: '900', name: 'Construction Engineering' },
+]
+
+function getSectionForTask(taskNumber: string): SectionInfo {
+  const n = parseInt(taskNumber, 10)
+  if (n >= 100 && n <= 149) return SECTIONS[0]
+  if (n >= 150 && n <= 199) return SECTIONS[1]
+  if (n >= 200 && n <= 219) return SECTIONS[2]
+  if (n >= 220 && n <= 229) return SECTIONS[3]
+  if (n >= 230 && n <= 299) return SECTIONS[4]
+  if (n >= 300 && n <= 349) return SECTIONS[5]
+  if (n >= 350 && n <= 399) return SECTIONS[6]
+  if (n >= 400 && n <= 449) return SECTIONS[7]
+  if (n >= 450 && n <= 499) return SECTIONS[8]
+  if (n >= 500 && n <= 599) return SECTIONS[9]
+  if (n >= 600 && n <= 699) return SECTIONS[10]
+  if (n >= 700 && n <= 709) return SECTIONS[11]
+  if (n >= 710 && n <= 749) return SECTIONS[12]
+  if (n >= 750 && n <= 799) return SECTIONS[13]
+  if (n >= 800 && n <= 899) return SECTIONS[14]
+  if (n >= 900 && n <= 999) return SECTIONS[15]
+  return { number: '999', name: 'Other' }
+}
 
 function totalHours(entry: Record<string, number>) {
   return Object.values(entry).reduce((s, v) => s + (v || 0), 0)
@@ -35,22 +77,22 @@ export default function EstimationBuilder() {
 
   const tasks = project.tasks ?? []
 
-  // Group tasks by Phase, sorted within each phase by task number (sequential)
-  const phaseGroups = useMemo(() => {
-    const map = new Map<Phase, WBSTask[]>()
+  // Group tasks by MassDOT Section (100, 150, 200…), sorted by task number within each section
+  const sectionGroups = useMemo(() => {
+    const map = new Map<string, WBSTask[]>() // sectionNumber → tasks
     for (const t of tasks) {
-      if (!map.has(t.phase)) map.set(t.phase, [])
-      map.get(t.phase)!.push(t)
+      const num = t.taskNumber || getTaskNumber(t.phase, t.discipline, t.taskName)
+      const sec = getSectionForTask(num)
+      if (!map.has(sec.number)) map.set(sec.number, [])
+      map.get(sec.number)!.push(t)
     }
-    // Sort each phase's tasks by task number numerically
-    for (const [, phaseTasks] of map) {
-      phaseTasks.sort((a, b) => {
-        const na = parseInt(a.taskNumber ?? '9999', 10)
-        const nb = parseInt(b.taskNumber ?? '9999', 10)
-        return na - nb
-      })
+    for (const [, secTasks] of map) {
+      secTasks.sort((a, b) => parseInt(a.taskNumber ?? '9999', 10) - parseInt(b.taskNumber ?? '9999', 10))
     }
-    return map
+    // Return sections in WHE form order (only sections that have tasks)
+    return SECTIONS
+      .map(s => ({ section: s, tasks: map.get(s.number) ?? [] }))
+      .filter(g => g.tasks.length > 0)
   }, [tasks])
 
   function toggleCollapse(key: string) {
@@ -160,44 +202,42 @@ export default function EstimationBuilder() {
             </tr>
           </thead>
           <tbody>
-            {PHASES.map(phase => {
-              const phaseTasks = phaseGroups.get(phase) ?? []
-              if (phaseTasks.length === 0) return null
-              const phaseKey = `phase-${phase}`
-              const phaseCollapsed = collapsed.has(phaseKey)
-              const phaseEst = phaseTasks.reduce((s, t) => s + totalHours(t.hours), 0)
-              const phaseAdj = phaseTasks.reduce((s, t) => s + totalHours(t.adjustedHours), 0)
+            {sectionGroups.map(({ section, tasks: secTasks }) => {
+              const secKey = `sec-${section.number}`
+              const secCollapsed = collapsed.has(secKey)
+              const secEst = secTasks.reduce((s, t) => s + totalHours(t.hours), 0)
+              const secAdj = secTasks.reduce((s, t) => s + totalHours(t.adjustedHours), 0)
 
               return (
-                <>
-                  {/* Phase header row */}
+                <React.Fragment key={secKey}>
+                  {/* Section header — matches MassDOT WHE Form 1.3 */}
                   <tr
-                    key={phaseKey}
-                    className="bg-slate-700 text-white cursor-pointer select-none"
-                    onClick={() => toggleCollapse(phaseKey)}
+                    className="bg-slate-800 text-white cursor-pointer select-none"
+                    onClick={() => toggleCollapse(secKey)}
                   >
-                    <td className="px-3 py-2 font-bold text-sm sticky left-0 bg-slate-700" colSpan={STAFF_CATEGORIES.length + 3}>
+                    <td className="px-3 py-2 sticky left-0 bg-slate-800" colSpan={STAFF_CATEGORIES.length + 3}>
                       <span className="flex items-center gap-2">
-                        {phaseCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                        {phase}
-                        <span className="text-slate-400 text-xs font-normal ml-1">{phaseTasks.length} tasks</span>
+                        {secCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                        <span className="text-xs font-bold text-amber-400">SECTION {section.number}</span>
+                        <span className="text-xs font-semibold text-white uppercase tracking-wide">{section.name}</span>
+                        <span className="text-slate-500 text-xs font-normal ml-1">{secTasks.length} tasks</span>
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-center text-xs font-semibold">{phaseEst}</td>
+                    <td className="px-3 py-2 text-center text-xs text-slate-300">{secEst}</td>
                     <td className="px-3 py-2"></td>
-                    <td className="px-3 py-2 text-center text-xs font-semibold">{phaseAdj}</td>
+                    <td className="px-3 py-2 text-center text-xs text-amber-300 font-semibold">{secAdj}</td>
                     <td className="px-3 py-2"></td>
                     <td className="px-2 py-2">
                       <button
-                        onClick={e => { e.stopPropagation(); addTask(phase, 'Roadway') }}
-                        className="text-slate-400 hover:text-amber-400"
-                        title="Add task"
+                        onClick={e => { e.stopPropagation(); addTask(secTasks[0]?.phase ?? 'Preliminary Design', 'Roadway') }}
+                        className="text-slate-500 hover:text-amber-400"
+                        title="Add task to this section"
                       ><Plus size={13} /></button>
                     </td>
                   </tr>
 
-                  {/* Tasks in sequence by task number */}
-                  {!phaseCollapsed && phaseTasks.map((task, idx) => {
+                  {/* Tasks in sequence */}
+                  {!secCollapsed && secTasks.map((task, idx) => {
                     const est = totalHours(task.hours)
                     const adj = totalHours(task.adjustedHours)
                     const labor = totalCost(task.adjustedHours, rates)
@@ -205,11 +245,9 @@ export default function EstimationBuilder() {
 
                     return (
                       <tr key={task.id} className={`border-b border-slate-100 hover:bg-amber-50 group ${isEven ? 'bg-white' : 'bg-slate-50/50'}`}>
-                        {/* Task # */}
                         <td className={`px-3 py-1.5 sticky left-0 text-center font-mono text-xs font-bold text-amber-700 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
                           {task.taskNumber || getTaskNumber(task.phase, task.discipline, task.taskName)}
                         </td>
-                        {/* Task name + discipline badge */}
                         <td className={`px-2 py-1.5 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
                           <div className="flex items-center gap-2">
                             <input
@@ -223,12 +261,10 @@ export default function EstimationBuilder() {
                             <span className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0 hidden group-hover:inline">{task.discipline}</span>
                           </div>
                         </td>
-                        {/* Hour cells */}
                         {STAFF_CATEGORIES.map(cat => (
                           <td key={cat} className="px-1 py-1">
                             <input
-                              type="number"
-                              min={0}
+                              type="number" min={0}
                               value={task.hours[cat] || 0}
                               onFocus={() => setEditingCell({ taskId: task.id, cat })}
                               onBlur={() => setEditingCell(null)}
@@ -243,8 +279,7 @@ export default function EstimationBuilder() {
                         ))}
                         <td className="px-3 py-1.5 text-center text-xs font-semibold text-slate-600">{est}</td>
                         <td className="px-1 py-1">
-                          <input
-                            type="number" min={0.1} max={3} step={0.05}
+                          <input type="number" min={0.1} max={3} step={0.05}
                             value={task.factor}
                             onChange={e => updateFactor(task.id, Number(e.target.value))}
                             className="w-full text-center text-xs rounded py-1 bg-transparent hover:bg-slate-100 outline-none"
@@ -260,7 +295,7 @@ export default function EstimationBuilder() {
                       </tr>
                     )
                   })}
-                </>
+                </React.Fragment>
               )
             })}
           </tbody>
