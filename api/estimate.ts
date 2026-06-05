@@ -237,11 +237,14 @@ const ROADWAY_MGMT_TASKS: Record<string, string[]> = {
     'Submission Checklist',                               // 457
     'Respond to 100% Comments and CRM',                  // 462 — MassDOT review response + CRM
   ],
+  // Section 800 — correct task names per WHE Form 1.3
   'PS&E': [
-    'Compile PS&E Package',                               // 801
-    'Final PS&E Review and Sign-offs',                    // 802
-    'Submit PS&E to MassDOT',                            // 803
-    'Address Final Comments',                             // 804
+    'Finalize Plans, Specifications and Estimate',        // 802
+    'Combine Highway and Bridge',                         // 803
+    'Quality Control (QC) Review',                        // 804
+    'Finalize Bottom Up Estimate and Estimate Reconciliation', // 805
+    'Finalize Construction Contract Time Determination',  // 806
+    'Finalize Incentives/Disincentives',                  // 807
   ],
 }
 
@@ -290,9 +293,11 @@ const ROADWAY_DESIGN_TASKS: Record<string, string[]> = {
     'Finalize Plans',                                // 452
     'Finalize Quantity and Cost Estimate',           // 455
   ],
+  // Section 800 design tasks
   'PS&E': [
-    'Compile PS&E Package',                          // 801
-    'Submit PS&E to MassDOT',                       // 803
+    'Finalize Plans, Specifications and Estimate',        // 802
+    'Combine Highway and Bridge',                         // 803
+    'Finalize Bottom Up Estimate and Estimate Reconciliation', // 805
   ],
 }
 
@@ -309,21 +314,21 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
     '25% Design':         ['Lane Configurations', 'Traffic Signals', 'Signs and Pavement Markings'],
     '75% Design':         ['Traffic Signals and Plan Preparation', 'Pavement Markings and Plan Preparation', 'Traffic Management Plans and Details'],
     '100% Design':        ['Finalize Plans', 'Traffic Control Agreement Submission'],
-    'PS&E':               ['Compile PS&E Package', 'Final PS&E Review and Sign-offs'],
+    'PS&E':               ['Finalize Plans, Specifications and Estimate', 'Quality Control (QC) Review'],
   },
   Structures: {
     'Preliminary Design': ['Field Investigation', 'Preliminary Structural Analysis', 'Preliminary Structures Report Preparation'],
     '25% Design':         ['Sketch Plan Development', 'Establish Boring Locations'],
     '75% Design':         ['Structural Design - Superstructure', 'Structural Design - Substructure', 'Contract Drawings', 'Constructability and Quality Control (QC) Review'],
     '100% Design':        ['Finalize Plans', 'Finalize Special Provisions', 'Quality Control (QC) Review'],
-    'PS&E':               ['Compile PS&E Package'],
+    'PS&E':               ['Finalize Plans, Specifications and Estimate', 'Combine Highway and Bridge', 'Quality Control (QC) Review'],
   },
   'Hydraulics/Drainage': {
     'Preliminary Design': ['Hydraulics Study and Report'],
     '25% Design':         ['Hydrological Studies and Hydraulics Report', 'Preliminary Drainage Studies'],
     '75% Design':         ['Drainage and Water Supply Plans'],
     '100% Design':        ['Finalize Plans'],
-    'PS&E':               ['Compile PS&E Package'],
+    'PS&E':               ['Finalize Plans, Specifications and Estimate'],
   },
   Utilities: {
     '25% Design':         ['Utility Coordination', 'Subsurface Utility Exploration (SUE)', 'Preliminary Utility Design'],
@@ -343,7 +348,7 @@ const TASK_MAP: Record<string, Record<string, string[]>> = {
   'Right-of-Way': {
     '75% Design':   ['Preliminary Right of Way Plans', 'Layout Plans and Order of Taking', 'Quality Control (QC) Review'],
     '100% Design':  ['Layout Plans and Order of Taking', 'Written Instrument', 'Quality Control (QC) Review'],
-    'PS&E':         ['Submit PS&E to MassDOT'],
+    'PS&E':         ['Finalize Plans, Specifications and Estimate'],
   },
 }
 

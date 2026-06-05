@@ -312,43 +312,74 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
     },
   },
 
-  // ── PS&E (Section 800) ───────────────────────────────────────────────────
+  // ── PS&E (Section 800) — correct task names from WHE Form 1.3 ────────────
   'PS&E / Roadway': {
     section: 'SECTION 800 — PS&E Submission',
     tasks: {
-      'Compile PS&E Package':                           801,
-      'Final PS&E Review and Sign-offs':               802,
-      'Submit PS&E to MassDOT':                        803,
-      'Address Final Comments':                         804,
-      'Final PS&E Quality Control (QC) Review':        805,
-      'Bottom Up Estimate and Reconciliation':         806,
-      'Construction Contract Time Determination':       807,
-      'Incentives/Disincentives':                       808,
+      // 801: Reserved
+      'Finalize Plans, Specifications and Estimate':                 802,
+      'Combine Highway and Bridge':                                  803,
+      'Quality Control (QC) Review':                                 804,
+      'Finalize Bottom Up Estimate and Estimate Reconciliation':     805,
+      'Finalize Construction Contract Time Determination':           806,
+      'Finalize Incentives/Disincentives':                           807,
     },
   },
   'PS&E / Traffic': {
     section: 'SECTION 800 — PS&E Submission',
     tasks: {
-      'Compile PS&E Package':                           801,
-      'Final PS&E Review and Sign-offs':               802,
-      'Submit PS&E to MassDOT':                        803,
+      'Finalize Plans, Specifications and Estimate':                 802,
+      'Quality Control (QC) Review':                                 804,
     },
   },
   'PS&E / Structures': {
     section: 'SECTION 800 — PS&E Submission',
     tasks: {
-      'Compile PS&E Package':                           801,
-      'Submit PS&E to MassDOT':                        803,
-      'Address Final Comments':                         804,
+      'Finalize Plans, Specifications and Estimate':                 802,
+      'Combine Highway and Bridge':                                  803,
+      'Quality Control (QC) Review':                                 804,
     },
   },
   'PS&E / Hydraulics/Drainage': {
     section: 'SECTION 800 — PS&E Submission',
-    tasks: { 'Compile PS&E Package': 801 },
+    tasks: {
+      'Finalize Plans, Specifications and Estimate':                 802,
+    },
   },
   'PS&E / Right-of-Way': {
     section: 'SECTION 800 — PS&E Submission',
-    tasks: { 'Submit PS&E to MassDOT': 803 },
+    tasks: {
+      'Finalize Plans, Specifications and Estimate':                 802,
+    },
+  },
+
+  // ── Construction Engineering (Section 900) ───────────────────────────────
+  'Construction Engineering / Roadway': {
+    section: 'SECTION 900 — Construction Engineering',
+    tasks: {
+      'Pre-Bid Services':                                            901,
+      'Pre-Construction Conference':                                 902,
+      'Highway Shop Drawings and Signal Layout Plans':               903,
+      'Furnishing Advice and Field Visits':                          906,
+    },
+  },
+  'Construction Engineering / Structures': {
+    section: 'SECTION 900 — Construction Engineering',
+    tasks: {
+      'Pre-Bid Services':                                            901,
+      'Bridge and Wall Shop Drawings':                               904,
+      'Bridge Construction Procedures':                              905,
+      'Furnishing Advice and Field Visits':                          906,
+      'Geotechnical Construction Evaluation':                        907,
+      'Bridge Rating and Photographs':                               908,
+    },
+  },
+  'Construction Engineering / Traffic': {
+    section: 'SECTION 900 — Construction Engineering',
+    tasks: {
+      'Highway Shop Drawings and Signal Layout Plans':               903,
+      'Furnishing Advice and Field Visits':                          906,
+    },
   },
 }
 
