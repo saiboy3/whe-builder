@@ -3,49 +3,7 @@ import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'luci
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
 import { STAFF_CATEGORIES } from '../types'
-import { getTaskNumber, STAFF_LABEL_MAP } from '../lib/taskNumbers'
-
-// MassDOT WHE Form 1.3 — Section structure in display order
-interface SectionInfo { number: string; name: string }
-const SECTIONS: SectionInfo[] = [
-  { number: '100', name: 'Project Development Engineering' },
-  { number: '150', name: 'Environmental' },
-  { number: '200', name: 'Functional Design Report' },
-  { number: '220', name: 'Design Justification Workbook' },
-  { number: '230', name: 'Interchange Justification/Modification Report (IJR/IMR)' },
-  { number: '300', name: '25% Highway Design Submission' },
-  { number: '350', name: 'Design Public Hearing' },
-  { number: '400', name: '75% Highway Design Submission' },
-  { number: '450', name: '100% Highway Design Submission' },
-  { number: '500', name: 'Right of Way' },
-  { number: '600', name: 'Geotechnical Design' },
-  { number: '700', name: 'Project Development – Structural' },
-  { number: '710', name: 'Sketch Plans' },
-  { number: '750', name: 'Final Bridge Design' },
-  { number: '800', name: 'PS&E Submission' },
-  { number: '900', name: 'Construction Engineering' },
-]
-
-function getSectionForTask(taskNumber: string): SectionInfo {
-  const n = parseInt(taskNumber, 10)
-  if (n >= 100 && n <= 149) return SECTIONS[0]
-  if (n >= 150 && n <= 199) return SECTIONS[1]
-  if (n >= 200 && n <= 219) return SECTIONS[2]
-  if (n >= 220 && n <= 229) return SECTIONS[3]
-  if (n >= 230 && n <= 299) return SECTIONS[4]
-  if (n >= 300 && n <= 349) return SECTIONS[5]
-  if (n >= 350 && n <= 399) return SECTIONS[6]
-  if (n >= 400 && n <= 449) return SECTIONS[7]
-  if (n >= 450 && n <= 499) return SECTIONS[8]
-  if (n >= 500 && n <= 599) return SECTIONS[9]
-  if (n >= 600 && n <= 699) return SECTIONS[10]
-  if (n >= 700 && n <= 709) return SECTIONS[11]
-  if (n >= 710 && n <= 749) return SECTIONS[12]
-  if (n >= 750 && n <= 799) return SECTIONS[13]
-  if (n >= 800 && n <= 899) return SECTIONS[14]
-  if (n >= 900 && n <= 999) return SECTIONS[15]
-  return { number: '999', name: 'Other' }
-}
+import { getTaskNumber, STAFF_LABEL_MAP, SECTIONS, getSectionForTask } from '../lib/taskNumbers'
 
 function totalHours(entry: Record<string, number>) {
   return Object.values(entry).reduce((s, v) => s + (v || 0), 0)

@@ -3,7 +3,7 @@ import { Sparkles, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Loade
 import { useApp } from '../context/AppContext'
 import { STAFF_CATEGORIES } from '../types'
 import type { WBSTask, Phase, Discipline } from '../types'
-import { getTaskNumber } from '../lib/taskNumbers'
+import { getTaskNumber, SECTIONS, getSectionForTask } from '../lib/taskNumbers'
 
 // Real MassDOT roadway project types from projectinfo portal
 const PROJECT_TYPES = [
@@ -358,77 +358,102 @@ export default function EstimationAssistant() {
                 </div>
               )}
 
-              {/* Discipline breakdown */}
-              {result.disciplines.map(disc => (
-                <div key={disc.discipline} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div
-                    className="px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                    onClick={() => setExpanded(prev => {
-                      const next = new Set(prev)
-                      next.has(disc.discipline) ? next.delete(disc.discipline) : next.add(disc.discipline)
-                      return next
-                    })}
-                  >
-                    <div className="flex items-center gap-2">
-                      {expanded.has(disc.discipline) ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                      <span className="font-semibold text-slate-800">{disc.discipline}</span>
-                      <span className="text-xs text-slate-400">{disc.tasks.length} tasks</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                      <span>{disc.tasks.reduce((s, t) => s + t.likelyHours, 0)} likely hrs</span>
-                      <span className="text-slate-300">|</span>
-                      <span>{disc.tasks.reduce((s, t) => s + t.lowHours, 0)}–{disc.tasks.reduce((s, t) => s + t.highHours, 0)} range</span>
-                    </div>
-                  </div>
+              {/* Results grouped by MassDOT Section — same structure as WBS Builder */}
+              {(() => {
+                // Flatten all tasks from all disciplines, assign task numbers, group by section
+                const allTasks = result.disciplines.flatMap(disc =>
+                  disc.tasks.map(t => ({
+                    ...t,
+                    discipline: disc.discipline,
+                    taskNum: getTaskNumber(t.phase, disc.discipline, t.taskName),
+                  }))
+                )
+                // Group by section
+                const sectionMap = new Map<string, typeof allTasks>()
+                for (const t of allTasks) {
+                  const sec = getSectionForTask(t.taskNum)
+                  if (!sectionMap.has(sec.number)) sectionMap.set(sec.number, [])
+                  sectionMap.get(sec.number)!.push(t)
+                }
+                // Sort within each section by task number
+                for (const tasks of sectionMap.values()) {
+                  tasks.sort((a, b) => parseInt(a.taskNum, 10) - parseInt(b.taskNum, 10))
+                }
+                // Render in WHE form section order
+                return SECTIONS
+                  .map(sec => ({ sec, tasks: sectionMap.get(sec.number) ?? [] }))
+                  .filter(g => g.tasks.length > 0)
+                  .map(({ sec, tasks: secTasks }) => {
+                    const secKey = `sec-${sec.number}`
+                    const isOpen = expanded.has(secKey)
+                    const likelyTotal = secTasks.reduce((s, t) => s + t.likelyHours, 0)
+                    const lowTotal = secTasks.reduce((s, t) => s + t.lowHours, 0)
+                    const highTotal = secTasks.reduce((s, t) => s + t.highHours, 0)
+                    return (
+                      <div key={secKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        <div
+                          className="px-5 py-3 flex items-center justify-between cursor-pointer bg-slate-800 text-white hover:bg-slate-700"
+                          onClick={() => setExpanded(prev => {
+                            const next = new Set(prev)
+                            next.has(secKey) ? next.delete(secKey) : next.add(secKey)
+                            return next
+                          })}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                            <span className="text-xs font-bold text-amber-400">SECTION {sec.number}</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-white">{sec.name}</span>
+                            <span className="text-slate-500 text-xs ml-1">{secTasks.length} tasks</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs">
+                            <span className="text-slate-300">{lowTotal}–{highTotal} range</span>
+                            <span className="font-bold text-amber-300">{likelyTotal} likely hrs</span>
+                          </div>
+                        </div>
 
-                  {expanded.has(disc.discipline) && (
-                    <div className="border-t border-slate-100">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 text-slate-500 font-semibold">
-                            <th className="px-3 py-2 text-center w-16">Task #</th>
-                            <th className="px-4 py-2 text-left">Phase / Task</th>
-                            {STAFF_CATEGORIES.map(c => (
-                              <th key={c} className="px-2 py-2 text-center min-w-[52px]">{c.split(' ').pop()}</th>
-                            ))}
-                            <th className="px-3 py-2 text-center">Low</th>
-                            <th className="px-3 py-2 text-center font-bold text-slate-700">Likely</th>
-                            <th className="px-3 py-2 text-center">High</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {[...disc.tasks].sort((a, b) => {
-                              const na = parseInt(getTaskNumber(a.phase, disc.discipline, a.taskName), 10)
-                              const nb = parseInt(getTaskNumber(b.phase, disc.discipline, b.taskName), 10)
-                              return na - nb
-                            }).map((task, i) => (
-                            <tr key={i} className="hover:bg-purple-50 group">
-                              <td className="px-3 py-2 text-center font-mono font-bold text-amber-700">
-                                {getTaskNumber(task.phase, disc.discipline, task.taskName)}
-                              </td>
-                              <td className="px-4 py-2">
-                                <div className="font-medium text-slate-700">{task.taskName}</div>
-                                <div className="text-slate-400 text-xs">{task.phase}</div>
-                                {task.rationale && (
-                                  <div className="text-slate-400 italic mt-0.5 hidden group-hover:block">{task.rationale}</div>
-                                )}
-                              </td>
-                              {STAFF_CATEGORIES.map(cat => (
-                                <td key={cat} className="px-2 py-2 text-center text-slate-600">
-                                  {task.hours[cat] || 0}
-                                </td>
-                              ))}
-                              <td className="px-3 py-2 text-center text-slate-400">{task.lowHours}</td>
-                              <td className="px-3 py-2 text-center font-bold text-purple-700">{task.likelyHours}</td>
-                              <td className="px-3 py-2 text-center text-slate-400">{task.highHours}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ))}
+                        {isOpen && (
+                          <div className="border-t border-slate-100">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-slate-50 text-slate-500 font-semibold">
+                                  <th className="px-3 py-2 text-center w-14">Task #</th>
+                                  <th className="px-4 py-2 text-left">Task Name</th>
+                                  <th className="px-3 py-2 text-left text-slate-400">Discipline</th>
+                                  {STAFF_CATEGORIES.map(c => (
+                                    <th key={c} className="px-2 py-2 text-center min-w-[44px]">{c.split(' ').pop()?.replace('(PIC)', '').replace('(PM)', '').replace('(SE)', '').replace('(Eng)', '').replace('(AE)', '').replace('(ET)', '').trim()}</th>
+                                  ))}
+                                  <th className="px-2 py-2 text-center">Low</th>
+                                  <th className="px-2 py-2 text-center font-bold text-purple-700">Likely</th>
+                                  <th className="px-2 py-2 text-center">High</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {secTasks.map((task, i) => (
+                                  <tr key={i} className={`hover:bg-purple-50 group ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                    <td className="px-3 py-1.5 text-center font-mono font-bold text-amber-700">{task.taskNum}</td>
+                                    <td className="px-4 py-1.5">
+                                      <div className="font-medium text-slate-700">{task.taskName}</div>
+                                      {task.rationale && (
+                                        <div className="text-slate-400 italic text-xs mt-0.5 hidden group-hover:block">{task.rationale}</div>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-slate-400">{task.discipline}</td>
+                                    {STAFF_CATEGORIES.map(cat => (
+                                      <td key={cat} className="px-2 py-1.5 text-center text-slate-600">{task.hours[cat] || 0}</td>
+                                    ))}
+                                    <td className="px-2 py-1.5 text-center text-slate-400">{task.lowHours}</td>
+                                    <td className="px-2 py-1.5 text-center font-bold text-purple-700">{task.likelyHours}</td>
+                                    <td className="px-2 py-1.5 text-center text-slate-400">{task.highHours}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+              })()}
             </>
           )}
         </div>
