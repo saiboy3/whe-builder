@@ -19,8 +19,9 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
 
   // ── PRELIMINARY DESIGN ──────────────────────────────────────────────────
   'Preliminary Design / Roadway': {
-    section: 'SECTION 100 — Project Development Engineering',
+    section: 'SECTION 100 / 200 / 220 — Preliminary Engineering',
     tasks: {
+      // Section 100 — Project Development Engineering
       'Project Initiation and Data Compilation':        101,
       'Preliminary Project Scoping':                    102,
       'Field Surveys':                                  103,
@@ -32,6 +33,26 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
       'Over-the-Shoulder Deliverables and Meeting':     111,
       'Public and Agency Outreach':                     112,
       'Project Design Schedule Development':            113,
+      // Section 200 — Functional Design Report (FDR)
+      'Evaluate Existing Conditions / Context':         201,
+      'Conduct Safety Analysis':                        202,
+      'Evaluate Signal Warrants':                       203,
+      'Operational Analysis for Existing Conditions':   204,
+      'Development of Alternatives':                    206,
+      'Operational Analysis for Future Conditions':     207,
+      'Preferred Alternative':                          208,
+      'Complete Streets':                               209,
+      'Traffic Management':                             210,
+      'Conclusion and Recommendation':                  211,
+      'Functional Design Report Preparation':           212,
+      'Report Preparation':                             212,
+      // Section 220 — Design Justification Workbook (DJW)
+      'Design Justification Workbook':                  221,
+      'Evaluate the Controlling Criteria':              221,
+      'Perform Incremental Evaluation':                 222,
+      'Complete and Certify the Workbook':              223,
+      // Section 230 — IJR/IMR
+      'Prepare an IJR/IMR':                             231,
     },
   },
   'Preliminary Design / Traffic': {
@@ -39,6 +60,7 @@ export const MASSDOT_TASKS: Record<string, { section: string; tasks: Record<stri
     tasks: {
       'Prepare Traffic Volumes':                        105,
       'Intersection Control Evaluation':                108,
+      'Road Safety Audit':                              107,
     },
   },
   'Preliminary Design / Environmental': {
@@ -310,23 +332,35 @@ export function getTaskNumber(phase: string, discipline: string, taskName: strin
   const key = `${phase} / ${discipline}`
   const section = MASSDOT_TASKS[key]
   if (section) {
-    // Exact match
+    // 1. Exact match
     if (section.tasks[taskName]) return String(section.tasks[taskName])
-    // Partial match (AI-generated task names won't match exactly)
-    const partial = Object.entries(section.tasks).find(([k]) =>
-      k.toLowerCase().includes(taskName.toLowerCase().slice(0, 8)) ||
-      taskName.toLowerCase().includes(k.toLowerCase().slice(0, 8))
+
+    // 2. Case-insensitive exact match
+    const lower = taskName.toLowerCase()
+    const exact = Object.entries(section.tasks).find(([k]) => k.toLowerCase() === lower)
+    if (exact) return String(exact[1])
+
+    // 3. Substring match — require at least 12 chars to avoid false positives
+    const MIN_MATCH = 12
+    const namePrefix = lower.slice(0, Math.max(MIN_MATCH, Math.floor(taskName.length * 0.6)))
+    const sub = Object.entries(section.tasks).find(([k]) =>
+      k.toLowerCase().startsWith(lower.slice(0, MIN_MATCH)) ||
+      lower.startsWith(k.toLowerCase().slice(0, MIN_MATCH))
     )
-    if (partial) return String(partial[1])
+    if (sub && namePrefix.length >= MIN_MATCH) return String(sub[1])
   }
-  // Fallback: generate from section number + hash
-  const phaseNum = phase === 'Preliminary Design' ? 1
-    : phase === '25% Design' ? 3
-    : phase === '75% Design' ? 4
-    : 4
-  const discOffset = { Roadway: 0, Traffic: 15, Structures: 50, 'Hydraulics/Drainage': 13,
-    Utilities: 1, Environmental: 50, Survey: 3, 'Right-of-Way': 0, 'Construction Support': 30 }[discipline] ?? 99
-  return String(phaseNum * 100 + discOffset + 1)
+
+  // 4. Deterministic fallback — hash the task name so same task always gets same number,
+  //    no counter state, no repeated numbers across different tasks
+  const phaseBase = phase === 'Preliminary Design' ? 100
+    : phase === '25% Design' ? 300
+    : phase === '75% Design' ? 400
+    : 450
+  let hash = 0
+  for (const c of taskName) hash = Math.imul(31, hash) + c.charCodeAt(0)
+  // Map to 01–89 within the section to avoid colliding with real task numbers
+  const suffix = (Math.abs(hash) % 89) + 1
+  return String(phaseBase + suffix)
 }
 
 export function getTaskSection(phase: string, discipline: string): string {
