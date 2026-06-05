@@ -115,7 +115,7 @@ export default function EstimationAssistant() {
   function setRiskField(idx: number, field: keyof RiskAddress, value: any) {
     setRiskAddresses(prev => ({
       ...prev,
-      [idx]: { open: false, reviewed: false, note: '', extraHours: 0, discipline: 'Roadway', ...prev[idx], [field]: value },
+      [idx]: { ...{ open: false, reviewed: false, note: '', extraHours: 0, discipline: 'Roadway' }, ...prev[idx], [field]: value },
     }))
   }
 
@@ -178,7 +178,7 @@ export default function EstimationAssistant() {
     // Collect risk flag notes and extra hours by discipline
     const flagNotes: Record<string, string[]> = {}
     const flagExtraHours: Record<string, number> = {}
-    Object.entries(riskAddresses).forEach(([idxStr, addr]) => {
+    Object.entries(riskAddresses).forEach(([, addr]) => {
       if (!addr.reviewed && addr.extraHours === 0 && !addr.note) return
       const disc = addr.discipline
       if (addr.note) {
