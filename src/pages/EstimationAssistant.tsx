@@ -102,6 +102,37 @@ export default function EstimationAssistant() {
   const [importing, setImporting] = useState(false)
   const [imported, setImported] = useState(false)
 
+  // Risk flag addressing — keyed by flag index
+  interface RiskAddress {
+    open: boolean
+    reviewed: boolean
+    note: string
+    extraHours: number
+    discipline: string
+  }
+  const [riskAddresses, setRiskAddresses] = useState<Record<number, RiskAddress>>({})
+
+  function setRiskField(idx: number, field: keyof RiskAddress, value: any) {
+    setRiskAddresses(prev => ({
+      ...prev,
+      [idx]: { open: false, reviewed: false, note: '', extraHours: 0, discipline: 'Roadway', ...prev[idx], [field]: value },
+    }))
+  }
+
+  const DISCIPLINES_LIST = ['Roadway', 'Traffic', 'Structures', 'Hydraulics/Drainage', 'Utilities', 'Environmental', 'Survey', 'Right-of-Way']
+
+  // Guess affected discipline from flag text
+  function guessDiscipline(flag: string): string {
+    const f = flag.toLowerCase()
+    if (f.includes('signal') || f.includes('intersection') || f.includes('traffic')) return 'Traffic'
+    if (f.includes('bridge') || f.includes('structure') || f.includes('structural')) return 'Structures'
+    if (f.includes('drainage') || f.includes('hydraulic') || f.includes('culvert')) return 'Hydraulics/Drainage'
+    if (f.includes('survey') || f.includes('miles') || f.includes('subsurface')) return 'Survey'
+    if (f.includes('environmental') || f.includes('wetland') || f.includes('permit')) return 'Environmental'
+    if (f.includes('row') || f.includes('right of way') || f.includes('taking')) return 'Right-of-Way'
+    return 'Roadway'
+  }
+
   function set(field: string, value: any) {
     setForm(f => ({ ...f, [field]: value }))
   }
@@ -143,7 +174,23 @@ export default function EstimationAssistant() {
   function importToProject() {
     if (!result || !project) return
     setImporting(true)
-    const newTasks: WBSTask[] = result.disciplines.flatMap(d =>
+
+    // Collect risk flag notes and extra hours by discipline
+    const flagNotes: Record<string, string[]> = {}
+    const flagExtraHours: Record<string, number> = {}
+    Object.entries(riskAddresses).forEach(([idxStr, addr]) => {
+      if (!addr.reviewed && addr.extraHours === 0 && !addr.note) return
+      const disc = addr.discipline
+      if (addr.note) {
+        if (!flagNotes[disc]) flagNotes[disc] = []
+        flagNotes[disc].push(`Risk flag note: ${addr.note}`)
+      }
+      if (addr.extraHours > 0) {
+        flagExtraHours[disc] = (flagExtraHours[disc] ?? 0) + addr.extraHours
+      }
+    })
+
+    const baseTasks: WBSTask[] = result.disciplines.flatMap(d =>
       d.tasks.map((t, i) => ({
         id: `ai-${d.discipline}-${i}-${Date.now()}`,
         taskNumber: getTaskNumber(t.phase, d.discipline, t.taskName),
@@ -153,10 +200,29 @@ export default function EstimationAssistant() {
         hours: t.hours,
         adjustedHours: t.hours,
         factor: 1.0,
-        notes: t.rationale,
+        notes: [t.rationale, ...(flagNotes[d.discipline] ?? [])].filter(Boolean).join(' | '),
       }))
     )
-    updateProject({ ...project, tasks: [...(project.tasks ?? []), ...newTasks] } as any)
+
+    // Add extra-hours tasks for risk flag adjustments
+    const extraTasks: WBSTask[] = Object.entries(flagExtraHours).map(([disc, hrs], i) => {
+      const flagIdx = Object.entries(riskAddresses).find(([, a]) => a.discipline === disc && a.extraHours > 0)?.[0]
+      const flag = flagIdx !== undefined && result.riskFlags[Number(flagIdx)] ? result.riskFlags[Number(flagIdx)] : 'Risk flag adjustment'
+      const phase: Phase = 'Preliminary Design'
+      return {
+        id: `risk-adj-${disc}-${Date.now()}-${i}`,
+        taskNumber: getTaskNumber(phase, disc as Discipline, 'Risk Flag Adjustment'),
+        phase,
+        discipline: disc as Discipline,
+        taskName: `Risk Flag Adjustment — ${flag.slice(0, 60)}`,
+        hours: { 'Principal In Charge (PIC)': 0, 'Project Manager (PM)': Math.round(hrs * 0.2), 'Senior Engineer (SE)': Math.round(hrs * 0.3), 'Engineer (Eng)': Math.round(hrs * 0.4), 'Assistant Engineer (AE)': Math.round(hrs * 0.1), 'Engineering Technician (ET)': 0 },
+        adjustedHours: { 'Principal In Charge (PIC)': 0, 'Project Manager (PM)': Math.round(hrs * 0.2), 'Senior Engineer (SE)': Math.round(hrs * 0.3), 'Engineer (Eng)': Math.round(hrs * 0.4), 'Assistant Engineer (AE)': Math.round(hrs * 0.1), 'Engineering Technician (ET)': 0 },
+        factor: 1.0,
+        notes: `Extra hours added from risk flag review`,
+      }
+    })
+
+    updateProject({ ...project, tasks: [...(project.tasks ?? []), ...baseTasks, ...extraTasks] } as any)
     setImporting(false)
     setImported(true)
   }
@@ -333,15 +399,113 @@ export default function EstimationAssistant() {
                 </div>
               </div>
 
-              {/* Risk flags */}
+              {/* Risk flags — interactive, each can be addressed */}
               {result.riskFlags.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2 text-amber-700 font-semibold text-sm">
-                    <AlertTriangle size={15} /> Risk Flags
+                <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 text-amber-700 font-semibold text-sm border-b border-amber-200">
+                    <AlertTriangle size={15} />
+                    Risk Flags — Address before importing
+                    <span className="ml-auto text-xs font-normal text-amber-500">
+                      {Object.values(riskAddresses).filter(a => a.reviewed).length}/{result.riskFlags.length} reviewed
+                    </span>
                   </div>
-                  <ul className="space-y-1">
-                    {result.riskFlags.map((f, i) => <li key={i} className="text-xs text-amber-700 flex items-start gap-2"><span className="mt-0.5">•</span>{f}</li>)}
-                  </ul>
+                  <div className="divide-y divide-amber-100">
+                    {result.riskFlags.map((flag, i) => {
+                      const addr = riskAddresses[i] ?? { open: false, reviewed: false, note: '', extraHours: 0, discipline: guessDiscipline(flag) }
+                      return (
+                        <div key={i} className={`px-4 py-3 ${addr.reviewed ? 'bg-green-50' : 'bg-amber-50'}`}>
+                          {/* Flag header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2 flex-1">
+                              <span className="mt-0.5 flex-shrink-0">
+                                {addr.reviewed
+                                  ? <CheckCircle2 size={14} className="text-green-600" />
+                                  : <AlertTriangle size={14} className="text-amber-600" />}
+                              </span>
+                              <span className={`text-xs ${addr.reviewed ? 'text-green-700 line-through opacity-60' : 'text-amber-800'}`}>{flag}</span>
+                            </div>
+                            <button
+                              onClick={() => setRiskField(i, 'open', !addr.open)}
+                              className="text-xs font-medium px-2 py-0.5 rounded border transition-colors flex-shrink-0 border-amber-300 text-amber-700 hover:bg-amber-100"
+                            >
+                              {addr.open ? 'Close' : 'Address'}
+                            </button>
+                          </div>
+
+                          {/* Address panel */}
+                          {addr.open && (
+                            <div className="mt-3 pl-5 space-y-3">
+                              {/* Note */}
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                  How is this being addressed?
+                                </label>
+                                <textarea
+                                  value={addr.note}
+                                  onChange={e => setRiskField(i, 'note', e.target.value)}
+                                  rows={2}
+                                  placeholder="e.g. Signal design confirmed scoped at 2 hrs/intersection × 4 intersections = 8 hrs total in Traffic discipline"
+                                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400 resize-none bg-white"
+                                />
+                              </div>
+
+                              {/* Extra hours */}
+                              <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                    Add extra hours to discipline
+                                    <span className="text-slate-400 font-normal ml-1">(optional)</span>
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number" min={0} step={4}
+                                      value={addr.extraHours || ''}
+                                      onChange={e => setRiskField(i, 'extraHours', Number(e.target.value))}
+                                      placeholder="0"
+                                      className="w-20 text-center text-xs border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-amber-400"
+                                    />
+                                    <span className="text-xs text-slate-400">hrs to</span>
+                                    <select
+                                      value={addr.discipline}
+                                      onChange={e => setRiskField(i, 'discipline', e.target.value)}
+                                      className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+                                    >
+                                      {DISCIPLINES_LIST.map(d => <option key={d}>{d}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                {/* Mark reviewed */}
+                                <button
+                                  onClick={() => {
+                                    setRiskField(i, 'reviewed', true)
+                                    setRiskField(i, 'open', false)
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                >
+                                  <CheckCircle2 size={13} /> Mark Reviewed
+                                </button>
+                              </div>
+
+                              {addr.extraHours > 0 && (
+                                <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-1.5">
+                                  {addr.extraHours} hrs will be added to <strong>{addr.discipline}</strong> as a "Risk Flag Adjustment" task when you import to WBS.
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Summary if reviewed */}
+                          {addr.reviewed && (addr.note || addr.extraHours > 0) && (
+                            <div className="mt-1.5 pl-5 text-xs text-green-600 flex items-center gap-3">
+                              {addr.note && <span className="italic truncate max-w-xs">"{addr.note}"</span>}
+                              {addr.extraHours > 0 && <span className="font-medium">+{addr.extraHours}h {addr.discipline}</span>}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
 
