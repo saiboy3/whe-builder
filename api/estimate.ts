@@ -213,21 +213,44 @@ const ROADWAY_MGMT_TASKS: Record<string, string[]> = {
     'Design Justification Workbook',                // 221-223 DJW
   ],
   '25% Design': [
-    'Meetings and Liaison',                          // 304
-    'Quality Control (QC) Review',                   // 322
-    'Submission Checklists',                         // 325
+    'Meetings and Liaison',                               // 304
+    'Quality Control (QC) Review',                        // 322 — includes addressing internal QC comments
+    'Submission Checklists',                              // 325
+    'Respond to 25% Comments and CRM',                   // 330 — MassDOT review response + CRM
   ],
   '75% Design': [
-    'Meetings Liaison and Coordination',             // 403
-    'Constructability and Quality Control (QC) Reviews', // 425
-    'Submission Checklist',                          // 426
+    'Meetings Liaison and Coordination',                  // 403
+    'Constructability and Quality Control (QC) Reviews', // 425 — includes addressing internal QC comments
+    'Submission Checklist',                               // 426
+    'Respond to 75% Comments and CRM',                   // 431 — MassDOT review response + CRM
   ],
   '100% / PS&E': [
-    'Finalize Special Provisions',                   // 453
-    'Quality Control (QC) Review',                   // 456
-    'Submission Checklist',                          // 457
-    'Respond to 100% Comments and CRM',             // 462
+    'Finalize Special Provisions',                        // 453
+    'Quality Control (QC) Review',                        // 456 — includes addressing final QC comments
+    'Submission Checklist',                               // 457
+    'Respond to 100% Comments and CRM',                  // 462 — MassDOT review response + CRM
   ],
+}
+
+// QC task names that should receive extra weight (review + addressing comments is more effort)
+// These get a multiplier applied so their hours reflect the full QC cycle
+const QC_TASK_WEIGHT: Record<string, number> = {
+  'Quality Control (QC) Review':                        2.0,  // review + address internal comments
+  'Constructability and Quality Control (QC) Reviews': 2.5,  // 75% is the heaviest QC effort
+  'Respond to 25% Comments and CRM':                   1.8,  // MassDOT comments tend to be numerous at 25%
+  'Respond to 75% Comments and CRM':                   2.2,  // largest comment volume
+  'Respond to 100% Comments and CRM':                  1.5,  // usually fewer final comments
+}
+
+// QC tasks are weighted toward reviewers (PIC/SE) for the review, and
+// Eng/AE for addressing comments — averaged into a single task allocation
+const QC_STAFF_BIAS: Record<string, number[]> = {
+  // [PIC, PM, SE, Eng, AE, ET] — deviation from base allocation
+  'Quality Control (QC) Review':                       [1.8, 0.9, 1.5, 1.0, 0.7, 0.1],
+  'Constructability and Quality Control (QC) Reviews': [1.8, 0.9, 1.5, 1.1, 0.6, 0.1],
+  'Respond to 25% Comments and CRM':                   [0.8, 1.6, 1.2, 1.3, 1.0, 0.1],
+  'Respond to 75% Comments and CRM':                   [0.8, 1.6, 1.2, 1.4, 0.9, 0.1],
+  'Respond to 100% Comments and CRM':                  [0.8, 1.5, 1.2, 1.4, 1.0, 0.1],
 }
 
 // Roadway design tasks — physical road design, scaled by roadwayDesignScale
@@ -356,7 +379,7 @@ function applyScaling(
   sf: SizeFactors,
   primaryMetric: string
 ) {
-  return disciplines.map(d => {
+  const scaled = disciplines.map(d => {
     const factor = disciplineSizeFactor(d.discipline, sf, primaryMetric)
     return {
       ...d,
@@ -378,6 +401,8 @@ function applyScaling(
       }),
     }
   })
+
+  return scaled
 }
 
 // ─── Rules-based estimate ─────────────────────────────────────────────────────
@@ -391,17 +416,34 @@ function buildRolewayTasksForPhase(
 ) {
   const tasks: any[] = []
 
-  // Management tasks — always at full multiplier (not scaled by road miles)
+  // Management tasks (FDR, DJW, checklists, QC reviews, CRM) — not scaled by road miles
+  // QC tasks get a weight multiplier: their hours cover review + addressing comments
   const mgmtNames = ROADWAY_MGMT_TASKS[phase] ?? []
   if (mgmtNames.length > 0) {
+    const nonQcCount = mgmtNames.filter(n => !QC_TASK_WEIGHT[n]).length || 1
     mgmtNames.forEach(taskName => {
-      const hrs = base.map(h => Math.max(0, Math.round((h * baseMult) / mgmtNames.length)))
+      const qcWeight = QC_TASK_WEIGHT[taskName] ?? 1.0
+      const staffBias = QC_STAFF_BIAS[taskName]
+
+      // Base per-task hours, then apply QC weight for review+comment effort
+      const baseHrs = base.map(h => Math.max(0, Math.round((h * baseMult * qcWeight) / Math.max(1, nonQcCount + Object.keys(QC_TASK_WEIGHT).filter(k => mgmtNames.includes(k)).length * 1.5))))
+
+      // Apply staff bias for QC tasks (reviewers vs comment-addressers)
+      const hrs = staffBias
+        ? baseHrs.map((h, i) => Math.max(0, Math.round(h * (staffBias[i] ?? 1))))
+        : baseHrs
+
       const likely = hrs.reduce((s, v) => s + v, 0)
+      const isQC = !!QC_TASK_WEIGHT[taskName]
       tasks.push({
         phase, taskName,
         hours: Object.fromEntries(STAFF.map((cat, i) => [cat, hrs[i] ?? 0])),
-        lowHours: Math.round(likely * 0.8), likelyHours: likely, highHours: Math.round(likely * 1.3),
-        rationale: `Roadway management / ${phase}: FDR/DJW/PM/checklists — all project types`,
+        lowHours:    Math.round(likely * (isQC ? 0.75 : 0.8)),
+        likelyHours: likely,
+        highHours:   Math.round(likely * (isQC ? 1.45 : 1.3)),  // QC has wider range (comment volume unpredictable)
+        rationale: isQC
+          ? `QC task / ${phase}: hours include review + addressing comments (×${qcWeight} weight)`
+          : `Roadway management / ${phase}: FDR/DJW/PM/checklists`,
       })
     })
   }
@@ -484,7 +526,11 @@ function buildRulesEstimate(projectType: string, complexity: number, phases: str
     disciplines: disciplineResults,
     riskFlags: buildRiskFlags(complexity, sf),
     similarProjects: [],
-    assumptions: buildAssumptions(projectType, complexity, complexityMult, intensityMult, sf, primaryMetric),
+    assumptions: [
+      ...buildAssumptions(projectType, complexity, complexityMult, intensityMult, sf, primaryMetric),
+      'QC tasks (322/425/456) sized to cover both internal review and addressing comments',
+      'CRM tasks (330/431/462) included every phase — hours reflect coordination + response effort',
+    ],
   }
 }
 
@@ -589,6 +635,11 @@ Size scaling rules:
 - Traffic/Signal hours: 2 intersections baseline → scale for ${sf.intersections}
 
 Staff: Principal In Charge (PIC), Project Manager (PM), Senior Engineer (SE), Engineer (Eng), Assistant Engineer (AE), Engineering Technician (ET)
+QC/CRM tasks to include per phase (these are Roadway management tasks, not a separate discipline):
+- 25% Design: task 322 (QC Review, sized to include addressing comments), task 330 (Respond to 25% Comments and CRM)
+- 75% Design: task 425 (Constructability and QC Reviews, sized for full comment cycle), task 431 (Respond to 75% Comments and CRM)
+- 100% PS&E: task 456 (QC Review, sized for final comment cycle), task 462 (Respond to 100% Comments and CRM)
+Weight QC review tasks 1.5–2.5× heavier than a standard task to account for review + addressing comments.
 MassDOT sections: 100 (Prelim/PM), 150 (Environmental), 200 (FDR), 220 (DJW), 300 (25%), 400 (75%), 450 (PS&E), 500 (ROW), 600 (Geotech), 700/710/750 (Structural)
 
 Return ONLY valid JSON — no markdown:
@@ -629,17 +680,22 @@ Return ONLY valid JSON — no markdown:
     const clean = text.replace(/^```json\s*/m, '').replace(/^```\s*/m, '').replace(/\s*```$/m, '').trim()
     const parsed = JSON.parse(clean)
 
-    // ALWAYS post-process with size scaling — guarantees road miles/bridges/intersections affect output
-    const scaled = applyScaling(parsed.disciplines ?? [], sf, primaryMetric)
-    const totalScaled = scaled.flatMap((d: any) => d.tasks).reduce((s: number, t: any) => s + t.likelyHours, 0)
+    // Post-process: apply size scaling
+    const cMult = 0.6 + (Number(complexity) - 1) * 0.2
+    const allDisciplines = applyScaling(parsed.disciplines ?? [], sf, primaryMetric)
+    const totalFinal = allDisciplines.flatMap((d: any) => d.tasks).reduce((s: number, t: any) => s + t.likelyHours, 0)
 
     return res.json({
       ...parsed,
-      disciplines: scaled,
-      totalEstimatedHours: totalScaled,
-      summary: buildSummary(projectType, Number(complexity), 0.6 + (Number(complexity) - 1) * 0.2, config?.intensityMult ?? 1, sf, totalScaled),
+      disciplines: allDisciplines,
+      totalEstimatedHours: totalFinal,
+      summary: buildSummary(projectType, Number(complexity), cMult, config?.intensityMult ?? 1, sf, totalFinal),
       riskFlags: [...(parsed.riskFlags ?? []), ...buildRiskFlags(Number(complexity), sf)].filter((v, i, a) => a.indexOf(v) === i),
-      assumptions: [...buildAssumptions(projectType, Number(complexity), 0.6 + (Number(complexity) - 1) * 0.2, config?.intensityMult ?? 1, sf, primaryMetric)],
+      assumptions: [
+        ...buildAssumptions(projectType, Number(complexity), cMult, config?.intensityMult ?? 1, sf, primaryMetric),
+        'QC review tasks (322/425/456) sized to cover review + addressing comments',
+        'CRM tasks (330/431/462) included each phase — hours reflect coordination and response effort',
+      ],
     })
   } catch (err: any) {
     console.error('Claude error:', err?.message ?? err)
