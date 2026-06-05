@@ -2,10 +2,8 @@ import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2, Save, AlertCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import type { WBSTask, Phase, Discipline, Project } from '../types'
-import { STAFF_CATEGORIES, PHASES, DISCIPLINES } from '../types'
+import { STAFF_CATEGORIES, PHASES } from '../types'
 import { getTaskNumber, STAFF_LABEL_MAP } from '../lib/taskNumbers'
-
-type GroupKey = `${Phase}||${Discipline}`
 
 function totalHours(entry: Record<string, number>) {
   return Object.values(entry).reduce((s, v) => s + (v || 0), 0)
