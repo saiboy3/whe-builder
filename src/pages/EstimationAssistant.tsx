@@ -397,7 +397,11 @@ export default function EstimationAssistant() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                          {disc.tasks.map((task, i) => (
+                          {[...disc.tasks].sort((a, b) => {
+                              const na = parseInt(getTaskNumber(a.phase, disc.discipline, a.taskName), 10)
+                              const nb = parseInt(getTaskNumber(b.phase, disc.discipline, b.taskName), 10)
+                              return na - nb
+                            }).map((task, i) => (
                             <tr key={i} className="hover:bg-purple-50 group">
                               <td className="px-3 py-2 text-center font-mono font-bold text-amber-700">
                                 {getTaskNumber(task.phase, disc.discipline, task.taskName)}
