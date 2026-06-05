@@ -37,26 +37,23 @@ export default function EstimationBuilder() {
 
   const tasks = project.tasks ?? []
 
-  // Group tasks by Phase > Discipline
-  const groups = useMemo(() => {
-    const map = new Map<GroupKey, WBSTask[]>()
+  // Group tasks by Phase, sorted within each phase by task number (sequential)
+  const phaseGroups = useMemo(() => {
+    const map = new Map<Phase, WBSTask[]>()
     for (const t of tasks) {
-      const key: GroupKey = `${t.phase}||${t.discipline}`
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(t)
+      if (!map.has(t.phase)) map.set(t.phase, [])
+      map.get(t.phase)!.push(t)
+    }
+    // Sort each phase's tasks by task number numerically
+    for (const [, phaseTasks] of map) {
+      phaseTasks.sort((a, b) => {
+        const na = parseInt(a.taskNumber ?? '9999', 10)
+        const nb = parseInt(b.taskNumber ?? '9999', 10)
+        return na - nb
+      })
     }
     return map
   }, [tasks])
-
-  const phaseGroups = useMemo(() => {
-    const map = new Map<Phase, Map<Discipline, WBSTask[]>>()
-    for (const [key, items] of groups) {
-      const [phase, discipline] = key.split('||') as [Phase, Discipline]
-      if (!map.has(phase)) map.set(phase, new Map())
-      map.get(phase)!.set(discipline, items)
-    }
-    return map
-  }, [groups])
 
   function toggleCollapse(key: string) {
     setCollapsed(prev => {
@@ -166,8 +163,8 @@ export default function EstimationBuilder() {
           </thead>
           <tbody>
             {PHASES.map(phase => {
-              const discMap = phaseGroups.get(phase)
-              const phaseTasks = tasks.filter(t => t.phase === phase)
+              const phaseTasks = phaseGroups.get(phase) ?? []
+              if (phaseTasks.length === 0) return null
               const phaseKey = `phase-${phase}`
               const phaseCollapsed = collapsed.has(phaseKey)
               const phaseEst = phaseTasks.reduce((s, t) => s + totalHours(t.hours), 0)
@@ -175,7 +172,7 @@ export default function EstimationBuilder() {
 
               return (
                 <>
-                  {/* Phase row */}
+                  {/* Phase header row */}
                   <tr
                     key={phaseKey}
                     className="bg-slate-700 text-white cursor-pointer select-none"
@@ -185,110 +182,84 @@ export default function EstimationBuilder() {
                       <span className="flex items-center gap-2">
                         {phaseCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                         {phase}
+                        <span className="text-slate-400 text-xs font-normal ml-1">{phaseTasks.length} tasks</span>
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center text-xs font-semibold">{phaseEst}</td>
                     <td className="px-3 py-2"></td>
                     <td className="px-3 py-2 text-center text-xs font-semibold">{phaseAdj}</td>
                     <td className="px-3 py-2"></td>
-                    <td className="px-2 py-2"></td>
+                    <td className="px-2 py-2">
+                      <button
+                        onClick={e => { e.stopPropagation(); addTask(phase, 'Roadway') }}
+                        className="text-slate-400 hover:text-amber-400"
+                        title="Add task"
+                      ><Plus size={13} /></button>
+                    </td>
                   </tr>
 
-                  {!phaseCollapsed && DISCIPLINES.map(discipline => {
-                    const dTasks = discMap?.get(discipline) ?? []
-                    if (dTasks.length === 0) return null
-                    const discKey = `${phase}||${discipline}`
-                    const discCollapsed = collapsed.has(discKey)
-                    const dEst = dTasks.reduce((s, t) => s + totalHours(t.hours), 0)
-                    const dAdj = dTasks.reduce((s, t) => s + totalHours(t.adjustedHours), 0)
+                  {/* Tasks in sequence by task number */}
+                  {!phaseCollapsed && phaseTasks.map((task, idx) => {
+                    const est = totalHours(task.hours)
+                    const adj = totalHours(task.adjustedHours)
+                    const labor = totalCost(task.adjustedHours, rates)
+                    const isEven = idx % 2 === 0
 
                     return (
-                      <>
-                        {/* Discipline row */}
-                        <tr
-                          key={discKey}
-                          className="bg-slate-100 cursor-pointer select-none border-b border-slate-200"
-                          onClick={() => toggleCollapse(discKey)}
-                        >
-                          <td className="px-5 py-1.5 font-semibold text-xs text-slate-600 sticky left-0 bg-slate-100" colSpan={STAFF_CATEGORIES.length + 3}>
-                            <span className="flex items-center gap-2">
-                              {discCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                              {discipline}
-                            </span>
+                      <tr key={task.id} className={`border-b border-slate-100 hover:bg-amber-50 group ${isEven ? 'bg-white' : 'bg-slate-50/50'}`}>
+                        {/* Task # */}
+                        <td className={`px-3 py-1.5 sticky left-0 text-center font-mono text-xs font-bold text-amber-700 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
+                          {task.taskNumber || getTaskNumber(task.phase, task.discipline, task.taskName)}
+                        </td>
+                        {/* Task name + discipline badge */}
+                        <td className={`px-2 py-1.5 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
+                          <div className="flex items-center gap-2">
+                            <input
+                              value={task.taskName}
+                              onChange={e => {
+                                const updated = tasks.map(t => t.id === task.id ? { ...t, taskName: e.target.value } : t)
+                                updateProject({ ...project, tasks: updated } as Project)
+                              }}
+                              className="text-xs text-slate-700 bg-transparent outline-none flex-1 hover:bg-white focus:bg-white focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 min-w-0"
+                            />
+                            <span className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0 hidden group-hover:inline">{task.discipline}</span>
+                          </div>
+                        </td>
+                        {/* Hour cells */}
+                        {STAFF_CATEGORIES.map(cat => (
+                          <td key={cat} className="px-1 py-1">
+                            <input
+                              type="number"
+                              min={0}
+                              value={task.hours[cat] || 0}
+                              onFocus={() => setEditingCell({ taskId: task.id, cat })}
+                              onBlur={() => setEditingCell(null)}
+                              onChange={e => updateHour(task.id, cat, Number(e.target.value))}
+                              className={`w-full text-center text-xs rounded py-1 outline-none transition-colors ${
+                                editingCell?.taskId === task.id && editingCell?.cat === cat
+                                  ? 'bg-amber-100 ring-1 ring-amber-400'
+                                  : 'bg-transparent hover:bg-slate-100'
+                              }`}
+                            />
                           </td>
-                          <td className="px-3 py-1.5 text-center text-xs text-slate-500">{dEst}</td>
-                          <td className="px-3 py-1.5"></td>
-                          <td className="px-3 py-1.5 text-center text-xs text-slate-500">{dAdj}</td>
-                          <td className="px-3 py-1.5"></td>
-                          <td className="px-2 py-1.5">
-                            <button
-                              onClick={e => { e.stopPropagation(); addTask(phase, discipline) }}
-                              className="text-amber-500 hover:text-amber-700"
-                              title="Add task"
-                            ><Plus size={13} /></button>
-                          </td>
-                        </tr>
-
-                        {/* Task rows */}
-                        {!discCollapsed && dTasks.map((task, idx) => {
-                          const est = totalHours(task.hours)
-                          const adj = totalHours(task.adjustedHours)
-                          const labor = totalCost(task.adjustedHours, rates)
-                          const isEven = idx % 2 === 0
-
-                          return (
-                            <tr key={task.id} className={`border-b border-slate-100 hover:bg-amber-50 group ${isEven ? 'bg-white' : 'bg-slate-50/50'}`}>
-                              <td className={`px-3 py-1.5 sticky left-0 text-center font-mono text-xs font-semibold text-amber-700 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
-                                {task.taskNumber || getTaskNumber(task.phase, task.discipline, task.taskName)}
-                              </td>
-                              <td className={`px-3 py-1.5 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-amber-50`}>
-                                <input
-                                  value={task.taskName}
-                                  onChange={e => {
-                                    const updated = tasks.map(t => t.id === task.id ? { ...t, taskName: e.target.value } : t)
-                                    updateProject({ ...project, tasks: updated } as Project)
-                                  }}
-                                  className="text-xs text-slate-700 bg-transparent outline-none w-full hover:bg-white focus:bg-white focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5"
-                                />
-                              </td>
-                              {STAFF_CATEGORIES.map(cat => (
-                                <td key={cat} className="px-1 py-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={task.hours[cat] || 0}
-                                    onFocus={() => setEditingCell({ taskId: task.id, cat })}
-                                    onBlur={() => setEditingCell(null)}
-                                    onChange={e => updateHour(task.id, cat, Number(e.target.value))}
-                                    className={`w-full text-center text-xs rounded py-1 outline-none transition-colors ${
-                                      editingCell?.taskId === task.id && editingCell?.cat === cat
-                                        ? 'bg-amber-100 ring-1 ring-amber-400'
-                                        : 'bg-transparent hover:bg-slate-100'
-                                    }`}
-                                  />
-                                </td>
-                              ))}
-                              <td className="px-3 py-1.5 text-center text-xs font-semibold text-slate-600">{est}</td>
-                              <td className="px-1 py-1">
-                                <input
-                                  type="number"
-                                  min={0.1} max={3} step={0.05}
-                                  value={task.factor}
-                                  onChange={e => updateFactor(task.id, Number(e.target.value))}
-                                  className="w-full text-center text-xs rounded py-1 bg-transparent hover:bg-slate-100 outline-none"
-                                />
-                              </td>
-                              <td className="px-3 py-1.5 text-center text-xs font-bold text-amber-700">{adj}</td>
-                              <td className="px-3 py-1.5 text-center text-xs text-slate-500">${labor.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                              <td className="px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => deleteTask(task.id)} className="text-red-400 hover:text-red-600">
-                                  <Trash2 size={12} />
-                                </button>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </>
+                        ))}
+                        <td className="px-3 py-1.5 text-center text-xs font-semibold text-slate-600">{est}</td>
+                        <td className="px-1 py-1">
+                          <input
+                            type="number" min={0.1} max={3} step={0.05}
+                            value={task.factor}
+                            onChange={e => updateFactor(task.id, Number(e.target.value))}
+                            className="w-full text-center text-xs rounded py-1 bg-transparent hover:bg-slate-100 outline-none"
+                          />
+                        </td>
+                        <td className="px-3 py-1.5 text-center text-xs font-bold text-amber-700">{adj}</td>
+                        <td className="px-3 py-1.5 text-center text-xs text-slate-500">${labor.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                        <td className="px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => deleteTask(task.id)} className="text-red-400 hover:text-red-600">
+                            <Trash2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
                     )
                   })}
                 </>
